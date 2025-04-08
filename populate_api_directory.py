@@ -23,7 +23,8 @@ APIS_GURU_URLS = [
 ]
 PUBLIC_APIS_URLS = [
     "https://api.publicapis.org/entries",
-    "https://github.com/public-apis/public-apis/raw/master/api/entries.json"
+    "https://raw.githubusercontent.com/public-apis/public-apis/master/entries",
+    "https://raw.githubusercontent.com/public-apis/public-apis/master/entries.json"
 ]
 
 # For resilience, also include a small set of pre-defined OSINT APIs
@@ -192,8 +193,18 @@ def fetch_apis_guru():
     # Process the API data
     apis = []
     try:
+        # Limit to 20 APIs to prevent timeouts in web requests
+        api_count = 0
+        max_apis = 20
+        
         for provider, provider_apis in api_data.items():
+            if api_count >= max_apis:
+                break
+                
             for version, details in provider_apis["versions"].items():
+                if api_count >= max_apis:
+                    break
+                    
                 # Filter for OSINT-relevant APIs
                 categories = details.get("info", {}).get("x-apisguru-categories", [])
                 title = details.get("info", {}).get("title", "").lower()
@@ -212,6 +223,7 @@ def fetch_apis_guru():
                 is_relevant = len(api_osint_categories) > 0
                 
                 if is_relevant:
+                    api_count += 1
                     api_info = details.get("info", {})
                     
                     # Extract endpoints from paths
@@ -221,18 +233,18 @@ def fetch_apis_guru():
                     # We'll need to fetch the full OpenAPI spec to get paths
                     if paths:
                         try:
-                            spec_response = requests.get(details["swaggerUrl"])
+                            spec_response = requests.get(details["swaggerUrl"], timeout=5)
                             if spec_response.status_code == 200:
                                 try:
                                     spec = spec_response.json()
-                                    # Extract up to 5 example endpoints
+                                    # Extract up to 3 example endpoints
                                     count = 0
                                     for path, methods in spec.get("paths", {}).items():
-                                        if count >= 5:
+                                        if count >= 3:
                                             break
                                         
                                         for method, operation in methods.items():
-                                            if method.lower() in ["get", "post"] and count < 5:
+                                            if method.lower() in ["get", "post"] and count < 3:
                                                 endpoint_name = operation.get("operationId", f"{method}_{path}")
                                                 endpoint_name = endpoint_name.replace(" ", "_").lower()
                                                 
@@ -280,9 +292,6 @@ def fetch_apis_guru():
                     
                     apis.append(api)
                     logger.info(f"Processed API: {api['api_name']}")
-                    
-                    # Add a small delay to avoid overwhelming the APIs.guru service
-                    time.sleep(0.1)
         
         logger.info(f"Found {len(apis)} OSINT-relevant APIs from APIs.guru")
         return apis
