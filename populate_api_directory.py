@@ -23,8 +23,8 @@ APIS_GURU_URLS = [
 ]
 PUBLIC_APIS_URLS = [
     "https://api.publicapis.org/entries",
-    "https://raw.githubusercontent.com/public-apis/public-apis/master/entries",
-    "https://raw.githubusercontent.com/public-apis/public-apis/master/entries.json"
+    "https://raw.githubusercontent.com/public-apis/public-apis/master/apis.json",
+    "https://api.api-ninjas.com/v1/publicapis"
 ]
 
 # For resilience, also include a small set of pre-defined OSINT APIs
@@ -193,17 +193,9 @@ def fetch_apis_guru():
     # Process the API data
     apis = []
     try:
-        # Limit to 20 APIs to prevent timeouts in web requests
-        api_count = 0
-        max_apis = 20
-        
+        # No limit on API count to ensure we get all relevant APIs
         for provider, provider_apis in api_data.items():
-            if api_count >= max_apis:
-                break
-                
             for version, details in provider_apis["versions"].items():
-                if api_count >= max_apis:
-                    break
                     
                 # Filter for OSINT-relevant APIs
                 categories = details.get("info", {}).get("x-apisguru-categories", [])
@@ -223,7 +215,6 @@ def fetch_apis_guru():
                 is_relevant = len(api_osint_categories) > 0
                 
                 if is_relevant:
-                    api_count += 1
                     api_info = details.get("info", {})
                     
                     # Extract endpoints from paths
