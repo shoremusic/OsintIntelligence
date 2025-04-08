@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0"><i class="fas fa-question-circle"></i> Help & Documentation</h2>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> This guide will help you navigate the OSINT platform and understand how to make the most of its features.
+            </div>
+            
+            <div class="help-section">
+                <h2><i class="fas fa-search"></i> Basic OSINT Investigation</h2>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card help-card">
+                            <div class="card-body text-center">
+                                <div class="help-icon"><i class="fas fa-user-circle"></i></div>
+                                <h5>Input Data</h5>
+                                <p>Start by entering as much information as you have about the subject. All fields are optional, but at least one is required.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card help-card">
+                            <div class="card-body text-center">
+                                <div class="help-icon"><i class="fas fa-robot"></i></div>
+                                <h5>AI Processing</h5>
+                                <p>Our AI system analyzes your input and determines which APIs will provide the most relevant information.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card help-card">
+                            <div class="card-body text-center">
+                                <div class="help-icon"><i class="fas fa-file-alt"></i></div>
+                                <h5>Results</h5>
+                                <p>Review the comprehensive report with visualizations, connections, and insights from multiple sources.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2><i class="fas fa-sitemap"></i> Workflow System</h2>
+                <p>The workflow system allows you to automate intelligence gathering with configurable steps and triggers.</p>
+                
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Workflow Levels</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><span class="workflow-level-basic">Basic</span></h6>
+                                        <p>Simple workflows with limited data points and basic analysis, suitable for beginners or routine checks.</p>
+                                        <ul>
+                                            <li>Single target focus</li>
+                                            <li>1-3 data collection steps</li>
+                                            <li>Basic report generation</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><span class="workflow-level-intermediate">Intermediate</span></h6>
+                                        <p>Moderate complexity with multiple data sources and more detailed analysis.</p>
+                                        <ul>
+                                            <li>Multiple related targets</li>
+                                            <li>4-6 data collection steps</li>
+                                            <li>Pattern detection</li>
+                                            <li>Detailed reporting</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><span class="workflow-level-expert">Expert</span></h6>
+                                        <p>Complex intelligence gathering with extensive sources and advanced analysis.</p>
+                                        <ul>
+                                            <li>Multiple target networks</li>
+                                            <li>7+ data collection steps</li>
+                                            <li>Cross-reference verification</li>
+                                            <li>Anomaly detection</li>
+                                            <li>Comprehensive intelligence reports</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Creating Workflows</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Go to the <strong>Workflows</strong> page</li>
+                            <li>Click <strong>Create New Workflow</strong></li>
+                            <li>Enter a name and description</li>
+                            <li>Define the workflow steps:</li>
+                            <ul>
+                                <li><strong>Data Collection:</strong> Specify which data to collect and from where</li>
+                                <li><strong>Analysis:</strong> Configure how the data should be analyzed</li>
+                                <li><strong>Reporting:</strong> Set up the reporting format and delivery method</li>
+                            </ul>
+                            <li>Set the workflow trigger (schedule, event, or manual)</li>
+                            <li>Save the workflow</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Executing and Monitoring</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>You can execute workflows manually or set them to run automatically based on schedules or events.</p>
+                        <p>The workflow execution history shows:</p>
+                        <ul>
+                            <li>When each workflow was executed</li>
+                            <li>Success or failure status</li>
+                            <li>Detailed logs of each step</li>
+                            <li>Any errors encountered</li>
+                            <li>Results and generated reports</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2><i class="fas fa-cogs"></i> API Configuration</h2>
+                <p>The platform uses various APIs to collect intelligence. You can configure these APIs in the API Configuration section.</p>
+                
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">RapidAPI Integration</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>This platform uses RapidAPI as the primary source for OSINT APIs. To get started:</p>
+                        <ol>
+                            <li>Create an account on <a href="https://rapidapi.com" target="_blank">RapidAPI</a></li>
+                            <li>Subscribe to relevant APIs</li>
+                            <li>Get your RapidAPI key</li>
+                            <li>Enter your RapidAPI key in the API Configuration page</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Custom API Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>You can also add custom APIs to the platform:</p>
+                        <ol>
+                            <li>Go to the <strong>API Configuration</strong> page</li>
+                            <li>Click <strong>Add New API</strong></li>
+                            <li>Enter the API details including name, URL, and authentication method</li>
+                            <li>Define the endpoints and response format</li>
+                            <li>Save the configuration</li>
+                        </ol>
+                        <p>The system will then include your custom API in the selection process when determining which APIs to use for investigations.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2><i class="fas fa-shield-alt"></i> Ethical Use Guidelines</h2>
+                <p>Please observe the following ethical guidelines when using this platform:</p>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <ul>
+                            <li>Only conduct OSINT on subjects with proper authorization</li>
+                            <li>Respect privacy and data protection laws</li>
+                            <li>Do not use the platform for harassment or stalking</li>
+                            <li>Securely store any sensitive information collected</li>
+                            <li>Use the information gathered responsibly and ethically</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

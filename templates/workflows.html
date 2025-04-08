@@ -182,6 +182,397 @@
                         <li><strong>schedule</strong> - Run workflow on a schedule</li>
                         <li><strong>event</strong> - Run workflow when new data appears</li>
                     </ul>
+                    
+                    <hr>
+                    
+                    <h6>Example Workflows:</h6>
+                    <div class="accordion" id="exampleWorkflowAccordion">
+                        <!-- Basic Workflow -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="basicWorkflowHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#basicWorkflowCollapse" aria-expanded="false" aria-controls="basicWorkflowCollapse">
+                                    <span class="workflow-level-basic me-2">Basic</span> Email Verification Workflow
+                                </button>
+                            </h2>
+                            <div id="basicWorkflowCollapse" class="accordion-collapse collapse" aria-labelledby="basicWorkflowHeading" data-bs-parent="#exampleWorkflowAccordion">
+                                <div class="accordion-body">
+                                    <p><strong>Purpose:</strong> Verify email addresses and gather basic information.</p>
+                                    <pre class="bg-dark text-light p-3 rounded"><code>[
+  {
+    "step_type": "api_query",
+    "name": "Email Verification",
+    "config": {
+      "api_name": "EmailVerifier",
+      "endpoint": "verify",
+      "params": {
+        "email": "{{ input.email }}"
+      }
+    }
+  },
+  {
+    "step_type": "condition",
+    "name": "Check Verification Result",
+    "config": {
+      "condition": "{{ steps.0.result.valid == true }}",
+      "true_path": 2,
+      "false_path": 4
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Domain Information",
+    "config": {
+      "api_name": "DomainInfo",
+      "endpoint": "info",
+      "params": {
+        "domain": "{{ input.email.split('@')[1] }}"
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Generate Report",
+    "config": {
+      "prompt": "Analyze the email verification and domain information and provide a brief report.",
+      "data": {
+        "email": "{{ input.email }}",
+        "verification": "{{ steps.0.result }}",
+        "domain_info": "{{ steps.2.result }}"
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Invalid Email Report",
+    "config": {
+      "prompt": "Generate a report explaining why the email is invalid and provide suggestions for next steps.",
+      "data": {
+        "email": "{{ input.email }}",
+        "verification": "{{ steps.0.result }}"
+      }
+    }
+  }
+]</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Intermediate Workflow -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="intermediateWorkflowHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#intermediateWorkflowCollapse" aria-expanded="false" aria-controls="intermediateWorkflowCollapse">
+                                    <span class="workflow-level-intermediate me-2">Intermediate</span> Social Media Profile Analysis
+                                </button>
+                            </h2>
+                            <div id="intermediateWorkflowCollapse" class="accordion-collapse collapse" aria-labelledby="intermediateWorkflowHeading" data-bs-parent="#exampleWorkflowAccordion">
+                                <div class="accordion-body">
+                                    <p><strong>Purpose:</strong> Gather and analyze social media profiles across multiple platforms.</p>
+                                    <pre class="bg-dark text-light p-3 rounded"><code>[
+  {
+    "step_type": "llm_analysis",
+    "name": "Username Variants",
+    "config": {
+      "prompt": "Generate 5 likely username variants based on the name and any known usernames.",
+      "data": {
+        "name": "{{ input.name }}",
+        "known_username": "{{ input.social_media }}"
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Social Media Profile Finder",
+    "config": {
+      "api_name": "ProfileFinder",
+      "endpoint": "search",
+      "params": {
+        "usernames": "{{ steps.0.result.username_variants }}"
+      }
+    }
+  },
+  {
+    "step_type": "condition",
+    "name": "Check If Profiles Found",
+    "config": {
+      "condition": "{{ steps.1.result.profiles|length > 0 }}",
+      "true_path": 3,
+      "false_path": 6
+    }
+  },
+  {
+    "step_type": "web_scrape",
+    "name": "Scrape Profile Pages",
+    "config": {
+      "urls": "{{ steps.1.result.profile_urls }}"
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Image Analysis",
+    "config": {
+      "api_name": "ImageAnalyzer",
+      "endpoint": "analyze",
+      "params": {
+        "image_urls": "{{ steps.1.result.profile_images }}"
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Profile Analysis Report",
+    "config": {
+      "prompt": "Analyze the social media profiles found. Identify patterns, interests, connections, and any significant findings.",
+      "data": {
+        "input_info": "{{ input }}",
+        "profiles": "{{ steps.1.result.profiles }}",
+        "profile_content": "{{ steps.3.result }}",
+        "image_analysis": "{{ steps.4.result }}"
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "No Profiles Report",
+    "config": {
+      "prompt": "Generate a report explaining that no profiles were found and suggest alternative approaches.",
+      "data": {
+        "input_info": "{{ input }}",
+        "username_variants": "{{ steps.0.result.username_variants }}"
+      }
+    }
+  }
+]</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Expert Workflow -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="expertWorkflowHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#expertWorkflowCollapse" aria-expanded="false" aria-controls="expertWorkflowCollapse">
+                                    <span class="workflow-level-expert me-2">Expert</span> Comprehensive Digital Footprint Analysis
+                                </button>
+                            </h2>
+                            <div id="expertWorkflowCollapse" class="accordion-collapse collapse" aria-labelledby="expertWorkflowHeading" data-bs-parent="#exampleWorkflowAccordion">
+                                <div class="accordion-body">
+                                    <p><strong>Purpose:</strong> Perform a comprehensive digital footprint analysis across multiple data points with cross-reference verification.</p>
+                                    <pre class="bg-dark text-light p-3 rounded"><code>[
+  {
+    "step_type": "llm_analysis",
+    "name": "Initial Data Assessment",
+    "config": {
+      "prompt": "Analyze the input data to identify the most promising data points for investigation and prioritize them.",
+      "data": "{{ input }}"
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Primary Identity Verification",
+    "config": {
+      "api_name": "IdentityVerifier",
+      "endpoint": "verify",
+      "params": {
+        "name": "{{ input.name }}",
+        "email": "{{ input.email }}",
+        "phone": "{{ input.phone }}",
+        "location": "{{ input.location }}"
+      }
+    }
+  },
+  {
+    "step_type": "condition",
+    "name": "Verification Check",
+    "config": {
+      "condition": "{{ steps.1.result.verification_score > 0.7 }}",
+      "true_path": 3,
+      "false_path": 15
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Email Intelligence",
+    "config": {
+      "api_name": "EmailIntel",
+      "endpoint": "analyze",
+      "params": {
+        "email": "{{ input.email }}"
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Phone Intelligence",
+    "config": {
+      "api_name": "PhoneIntel",
+      "endpoint": "analyze",
+      "params": {
+        "phone": "{{ input.phone }}"
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Location Intelligence",
+    "config": {
+      "api_name": "LocationIntel",
+      "endpoint": "analyze",
+      "params": {
+        "location": "{{ input.location }}"
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Social Media Intelligence",
+    "config": {
+      "api_name": "SocialIntel",
+      "endpoint": "comprehensive",
+      "params": {
+        "identifiers": {
+          "name": "{{ input.name }}",
+          "email": "{{ input.email }}",
+          "phone": "{{ input.phone }}",
+          "social_media": "{{ input.social_media }}"
+        }
+      }
+    }
+  },
+  {
+    "step_type": "web_scrape",
+    "name": "Web Presence Scraping",
+    "config": {
+      "urls": "{{ steps.6.result.profile_urls + steps.1.result.web_mentions }}",
+      "depth": 2
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Image Analysis",
+    "config": {
+      "api_name": "ImageAnalyzer",
+      "endpoint": "deep_analysis",
+      "params": {
+        "images": [
+          "{{ input.image }}",
+          "{{ steps.6.result.profile_images }}"
+        ]
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Vehicle Records",
+    "config": {
+      "api_name": "VehicleRecords",
+      "endpoint": "search",
+      "params": {
+        "vehicle_info": "{{ input.vehicle }}",
+        "name": "{{ input.name }}",
+        "location": "{{ input.location }}"
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Cross-Reference Analysis",
+    "config": {
+      "prompt": "Cross-reference all data points to identify consistencies, inconsistencies, and connections. Verify information across multiple sources and flag any anomalies.",
+      "data": {
+        "identity": "{{ steps.1.result }}",
+        "email_intel": "{{ steps.3.result }}",
+        "phone_intel": "{{ steps.4.result }}",
+        "location_intel": "{{ steps.5.result }}",
+        "social_intel": "{{ steps.6.result }}",
+        "web_presence": "{{ steps.7.result }}",
+        "image_analysis": "{{ steps.8.result }}",
+        "vehicle_records": "{{ steps.9.result }}"
+      }
+    }
+  },
+  {
+    "step_type": "api_query",
+    "name": "Network Analysis",
+    "config": {
+      "api_name": "NetworkMapper",
+      "endpoint": "map_network",
+      "params": {
+        "seed_identifiers": {
+          "name": "{{ input.name }}",
+          "email": "{{ input.email }}",
+          "phone": "{{ input.phone }}",
+          "social_media": "{{ steps.6.result.profiles }}"
+        },
+        "depth": 2
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Anomaly Detection",
+    "config": {
+      "prompt": "Analyze all collected data to identify anomalies, unusual patterns, or security concerns.",
+      "data": {
+        "all_data": {
+          "input": "{{ input }}",
+          "verification": "{{ steps.1.result }}",
+          "email": "{{ steps.3.result }}",
+          "phone": "{{ steps.4.result }}",
+          "location": "{{ steps.5.result }}",
+          "social": "{{ steps.6.result }}",
+          "web": "{{ steps.7.result }}",
+          "images": "{{ steps.8.result }}",
+          "vehicle": "{{ steps.9.result }}",
+          "cross_reference": "{{ steps.10.result }}",
+          "network": "{{ steps.11.result }}"
+        }
+      }
+    }
+  },
+  {
+    "step_type": "data_store",
+    "name": "Store Intelligence",
+    "config": {
+      "dataset": "comprehensive_intelligence",
+      "data": "{{ all_steps_results }}"
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Generate Comprehensive Report",
+    "config": {
+      "prompt": "Generate a comprehensive intelligence report with all findings, verified information, connections, network mapping, anomalies, and recommendations for further investigation.",
+      "data": {
+        "all_data": {
+          "input": "{{ input }}",
+          "results": "{{ all_steps_results }}",
+          "cross_reference": "{{ steps.10.result }}",
+          "anomalies": "{{ steps.12.result }}"
+        }
+      }
+    }
+  },
+  {
+    "step_type": "llm_analysis",
+    "name": "Insufficient Verification Report",
+    "config": {
+      "prompt": "Generate a report explaining that the identity could not be verified with high confidence. Analyze possible reasons and suggest additional data points that could improve verification.",
+      "data": {
+        "input": "{{ input }}",
+        "verification_result": "{{ steps.1.result }}"
+      }
+    }
+  }
+]</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('help_page') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-question-circle"></i> View Full Help Documentation
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

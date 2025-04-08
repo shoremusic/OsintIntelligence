@@ -366,6 +366,22 @@ function initOsintForm() {
                 errorDiv.remove();
             }
             
+            // Show loading animation
+            document.getElementById('osint-loading').classList.remove('d-none');
+            document.getElementById('submit-osint').disabled = true;
+            
+            // Simulate progress
+            let progress = 0;
+            const progressBar = document.getElementById('osint-progress');
+            const progressInterval = setInterval(() => {
+                progress += 3;
+                if (progress >= 90) {
+                    clearInterval(progressInterval);
+                }
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+            }, 300);
+            
             // Continue with form submission
             osintForm.submit();
         }
@@ -390,9 +406,13 @@ function initUrlScraper() {
             return;
         }
         
-        // Show loading indicator
+        // Show loading indicator with network animation
         document.getElementById('scrape-loading').classList.remove('d-none');
         document.getElementById('scrape-results').classList.add('d-none');
+        
+        // Disable the form while loading
+        urlInput.disabled = true;
+        scrapeUrlForm.querySelector('button[type="submit"]').disabled = true;
         
         // Send request to scrape URL
         fetch('/scrape_url', {
@@ -404,8 +424,10 @@ function initUrlScraper() {
         })
         .then(response => response.json())
         .then(data => {
-            // Hide loading indicator
+            // Hide loading indicator and re-enable form
             document.getElementById('scrape-loading').classList.add('d-none');
+            urlInput.disabled = false;
+            scrapeUrlForm.querySelector('button[type="submit"]').disabled = false;
             
             if (data.status === 'success') {
                 // Display results
@@ -425,6 +447,8 @@ function initUrlScraper() {
         })
         .catch(error => {
             document.getElementById('scrape-loading').classList.add('d-none');
+            urlInput.disabled = false;
+            scrapeUrlForm.querySelector('button[type="submit"]').disabled = false;
             console.error('Error scraping URL:', error);
             alert(`Error: ${error.message}`);
         });

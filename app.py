@@ -218,6 +218,11 @@ def report():
                            api_results=api_results,
                            case_id=case_id)
 
+@app.route('/help')
+def help_page():
+    """Route to display help and documentation page"""
+    return render_template('help.html')
+
 @app.route('/scrape_url', methods=['POST'])
 def scrape_url():
     try:

@@ -68,6 +68,14 @@
                             <i class="fas fa-search"></i> Start OSINT Investigation
                         </button>
                     </div>
+                    
+                    <div id="osint-loading" class="loading-container mt-4 d-none">
+                        <div class="radar-loader"></div>
+                        <p class="loading-text mt-3">Processing intelligence data...</p>
+                        <div class="progress mt-2" style="width: 100%;">
+                            <div id="osint-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -107,10 +115,18 @@
                 </form>
                 
                 <div id="scrape-loading" class="text-center my-3 d-none">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                    <div class="network-loader">
+                        <div class="node node1"></div>
+                        <div class="node node2"></div>
+                        <div class="node node3"></div>
+                        <div class="node node4"></div>
+                        <div class="node node5"></div>
+                        <div class="connection connection1"></div>
+                        <div class="connection connection2"></div>
+                        <div class="connection connection3"></div>
+                        <div class="connection connection4"></div>
                     </div>
-                    <p>Scraping website content...</p>
+                    <p class="loading-text">Scraping website content...</p>
                 </div>
                 
                 <div id="scrape-results" class="d-none">
