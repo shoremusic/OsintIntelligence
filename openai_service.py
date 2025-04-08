@@ -240,32 +240,40 @@ def process_input_with_llm(input_data):
         Primary Image Provided: {'Yes' if input_data.get('has_image') else 'No'}
         Secondary Image Provided: {'Yes' if input_data.get('has_secondary_image') else 'No'}
         
-        Based on this data, determine which types of APIs would be most useful to query.
-        Consider APIs for:
-        - Email verification and reputation (EmailRep, Hunter, etc.)
-        - Phone number validation (Numverify, etc.)
-        - Social media profile search
-        - Domain/IP intelligence
-        - Geolocation services
-        - Vehicle registration lookup
-        - Reverse image search
-        - Business entity search
-        - WHOIS domain lookups
+        Our system uses a three-level categorization structure for OSINT APIs:
+        1. Data Type: TEXT, IMAGE, VIDEO, LOCATION, NETWORK
+        2. Entity Type: PERSON, ORGANIZATION, DOMAIN, DEVICE, ADDRESS, etc.
+        3. Attribute Type: NAME, EMAIL, PHONE, IP, URL, FACE, LICENSE_PLATE, USERNAME, etc.
+        
+        For example:
+        - Email verification APIs are categorized as: TEXT/PERSON/EMAIL
+        - Phone validation APIs are categorized as: TEXT/PERSON/PHONE
+        - IP geolocation APIs are categorized as: NETWORK/DEVICE/IP and LOCATION/ADDRESS/COORDINATES
+        - Social media profile search APIs are categorized as: TEXT/PERSON/USERNAME or TEXT/PERSON/SOCIAL
+        - Facial recognition APIs are categorized as: IMAGE/PERSON/FACE
+        - License plate recognition APIs are categorized as: IMAGE/DEVICE/LICENSE_PLATE
+        
+        Based on the input data, determine which categories of APIs would be most useful to query.
+        Only recommend categories that have relevant input data. For example, don't recommend IMAGE APIs if no image is provided.
         
         Return your analysis in the following JSON format:
         {
-            "recommended_api_types": ["list of API types to query"],
+            "recommended_api_categories": [
+                {
+                    "data_type": "TEXT or IMAGE or VIDEO or LOCATION or NETWORK",
+                    "entity_type": "PERSON or ORGANIZATION or DOMAIN or DEVICE or ADDRESS",
+                    "attribute_type": "NAME or EMAIL or PHONE or IP or URL or FACE, etc."
+                }
+            ],
             "query_parameters": {
-                "email": ["list of parameters for email APIs"],
-                "phone": ["list of parameters for phone APIs"],
-                "social_media": ["list of parameters for social media APIs"],
-                "location": ["list of parameters for location APIs"],
-                "vehicle": ["list of parameters for vehicle APIs"],
-                "image": ["list of parameters for image APIs"],
-                "domain": ["list of parameters for domain APIs"],
-                "business": ["list of parameters for business APIs"]
+                "TEXT/PERSON/EMAIL": ["list of parameters for email APIs"],
+                "TEXT/PERSON/PHONE": ["list of parameters for phone APIs"],
+                "TEXT/PERSON/USERNAME": ["list of parameters for social media APIs"],
+                "LOCATION/ADDRESS/COORDINATES": ["list of parameters for location APIs"],
+                "IMAGE/DEVICE/LICENSE_PLATE": ["list of parameters for vehicle APIs"],
+                "IMAGE/PERSON/FACE": ["list of parameters for image APIs"]
             },
-            "reasoning": "Explanation of your recommendations"
+            "reasoning": "Explanation of your recommendations, including why certain categories were included or excluded"
         }
         """
         
@@ -286,20 +294,72 @@ def process_input_with_llm(input_data):
     
     except Exception as e:
         logger.error(f"Error processing input with LLM: {str(e)}")
-        # Return a default response in case of error
+        # Return a default response in case of error that uses our new categorization structure
+        default_categories = []
+        
+        if input_data.get('email'):
+            default_categories.append({
+                "data_type": "TEXT",
+                "entity_type": "PERSON",
+                "attribute_type": "EMAIL"
+            })
+        
+        if input_data.get('phone'):
+            default_categories.append({
+                "data_type": "TEXT",
+                "entity_type": "PERSON",
+                "attribute_type": "PHONE"
+            })
+        
+        if input_data.get('social_media'):
+            default_categories.append({
+                "data_type": "TEXT",
+                "entity_type": "PERSON",
+                "attribute_type": "USERNAME"
+            })
+        
+        if input_data.get('location'):
+            default_categories.append({
+                "data_type": "LOCATION",
+                "entity_type": "ADDRESS",
+                "attribute_type": "COORDINATES"
+            })
+        
+        if input_data.get('vehicle'):
+            default_categories.append({
+                "data_type": "TEXT",
+                "entity_type": "DEVICE",
+                "attribute_type": "VEHICLE"
+            })
+        
+        if input_data.get('has_image'):
+            default_categories.append({
+                "data_type": "IMAGE",
+                "entity_type": "PERSON",
+                "attribute_type": "FACE"
+            })
+        
+        # Prepare query parameters
+        query_params = {}
+        for category in default_categories:
+            category_key = f"{category['data_type']}/{category['entity_type']}/{category['attribute_type']}"
+            if category['attribute_type'] == 'EMAIL':
+                query_params[category_key] = [input_data.get('email')]
+            elif category['attribute_type'] == 'PHONE':
+                query_params[category_key] = [input_data.get('phone')]
+            elif category['attribute_type'] == 'USERNAME':
+                query_params[category_key] = [input_data.get('social_media')]
+            elif category['attribute_type'] == 'COORDINATES':
+                query_params[category_key] = [input_data.get('location')]
+            elif category['attribute_type'] == 'VEHICLE':
+                query_params[category_key] = [input_data.get('vehicle')]
+            elif category['attribute_type'] == 'FACE':
+                query_params[category_key] = ["image_search"]
+        
         return {
-            "recommended_api_types": ["email", "phone", "social_media"],
-            "query_parameters": {
-                "email": [input_data.get('email')] if input_data.get('email') else [],
-                "phone": [input_data.get('phone')] if input_data.get('phone') else [],
-                "social_media": [input_data.get('social_media')] if input_data.get('social_media') else [],
-                "location": [input_data.get('location')] if input_data.get('location') else [],
-                "vehicle": [input_data.get('vehicle')] if input_data.get('vehicle') else [],
-                "image": ["image_search"] if input_data.get('has_image') else [],
-                "domain": [],
-                "business": []
-            },
-            "reasoning": "Default selection due to error in LLM processing"
+            "recommended_api_categories": default_categories,
+            "query_parameters": query_params,
+            "reasoning": "Default selection due to error in LLM processing. Selected categories based on available input data."
         }
 
 def analyze_data_with_llm(api_results, input_data):

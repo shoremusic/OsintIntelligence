@@ -292,60 +292,50 @@ def save_api_key():
         logger.error(f"Error saving API key: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/populate_api_directory', methods=['POST'])
-def populate_api_directory():
-    """Route to populate the API directory from public sources"""
+@app.route('/populate_osint_apis', methods=['GET'])
+def populate_osint_apis():
+    """Route to populate the database with categorized OSINT APIs"""
     try:
-        # Import the script functions
-        from populate_api_directory import PREDEFINED_APIS, fetch_apis_guru, fetch_public_apis, add_api_config_if_not_exists
+        # Import the OSINT API list
+        from osint_apis import OSINT_APIS
         
-        # Determine which source to use
-        source = request.form.get('source', 'all')
+        # Function to add an API if it doesn't exist
+        def add_api_config_if_not_exists(api_data):
+            existing_api = APIConfiguration.query.filter_by(api_name=api_data["api_name"]).first()
+            if existing_api:
+                logger.info(f"API '{api_data['api_name']}' already exists.")
+                return False
+            else:
+                # Add the API to the database
+                api_config = APIConfiguration(
+                    api_name=api_data["api_name"],
+                    api_url=api_data["api_url"],
+                    api_key_env=api_data["api_key_env"],
+                    description=api_data["description"],
+                    endpoints=api_data["endpoints"],
+                    format=api_data["format"]
+                )
+                db.session.add(api_config)
+                db.session.commit()
+                logger.info(f"Added API '{api_data['api_name']}' to database.")
+                return True
+        
+        # Add OSINT APIs to database
         apis_count = 0
-        
-        # Always add predefined APIs first
-        predefined_count = 0
-        for api_data in PREDEFINED_APIS:
+        for api_data in OSINT_APIS:
             if add_api_config_if_not_exists(api_data):
-                predefined_count += 1
-        logger.info(f"Added {predefined_count} predefined OSINT APIs to database")
-        apis_count += predefined_count
+                apis_count += 1
         
-        # Add from external sources if requested
-        try:
-            if source in ['all', 'apis_guru']:
-                # Fetch and add APIs from APIs.guru
-                apis_guru_apis = fetch_apis_guru()
-                apis_guru_count = 0
-                for api_data in apis_guru_apis:
-                    if add_api_config_if_not_exists(api_data):
-                        apis_guru_count += 1
-                logger.info(f"Added {apis_guru_count} APIs from APIs.guru to database")
-                apis_count += apis_guru_count
-        except Exception as e:
-            logger.error(f"Error fetching from APIs.guru: {str(e)}")
-            flash(f"Error fetching from APIs.guru: {str(e)}", "warning")
+        # Show success message
+        if apis_count > 0:
+            flash(f"Successfully added {apis_count} OSINT APIs to the directory.", "success")
+        else:
+            flash("No new OSINT APIs were added to the directory.", "info")
         
-        try:
-            if source in ['all', 'public_apis']:
-                # Fetch and add APIs from Public APIs
-                public_apis = fetch_public_apis()
-                public_apis_count = 0
-                for api_data in public_apis:
-                    if add_api_config_if_not_exists(api_data):
-                        public_apis_count += 1
-                logger.info(f"Added {public_apis_count} APIs from Public APIs to database")
-                apis_count += public_apis_count
-        except Exception as e:
-            logger.error(f"Error fetching from Public APIs: {str(e)}")
-            flash(f"Error fetching from Public APIs: {str(e)}", "warning")
-            
-        flash(f"Successfully added {apis_count} new APIs to the directory", "success")
         return redirect(url_for('api_config'))
-        
     except Exception as e:
-        logger.error(f"Error populating API directory: {str(e)}")
-        flash(f"Error populating API directory: {str(e)}", "danger")
+        logger.error(f"Error populating OSINT APIs: {str(e)}")
+        flash(f"Error populating OSINT APIs: {str(e)}", "danger")
         return redirect(url_for('api_config'))
 
 @app.errorhandler(500)

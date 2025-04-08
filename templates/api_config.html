@@ -117,49 +117,78 @@
         </div>
         
         <div class="card mb-4">
-            <div class="card-header bg-success text-white">
-                <h3 class="mb-0"><i class="fas fa-cloud-download-alt"></i> Pre-Curated API Directory</h3>
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="fas fa-database"></i> Pre-Populated OSINT APIs</h3>
             </div>
             <div class="card-body">
-                <p>Populate your API directory automatically from public API repositories. This will add OSINT-relevant APIs from public directories to your system.</p>
+                <p>The system includes a pre-populated set of OSINT-relevant APIs organized by data type and category.</p>
                 
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> This will scan APIs from <a href="https://github.com/APIs-guru/openapi-directory" target="_blank">APIs.guru</a> and <a href="https://github.com/public-apis/public-apis" target="_blank">Public APIs GitHub Repo</a> and add them to your database.
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> These APIs are automatically categorized for optimal AI selection based on user input data types.
                 </div>
                 
-                <form action="/populate_api_directory" method="post" class="mb-3">
-                    <div class="form-group mb-3">
-                        <label class="form-label">Select API Directory Source</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="source" id="source_all" value="all" checked>
-                            <label class="form-check-label" for="source_all">
-                                All Sources
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="source" id="source_apis_guru" value="apis_guru">
-                            <label class="form-check-label" for="source_apis_guru">
-                                APIs.guru Only
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="source" id="source_public_apis" value="public_apis">
-                            <label class="form-check-label" for="source_public_apis">
-                                Public APIs GitHub Repo Only
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-download"></i> Populate API Directory
-                        </button>
-                    </div>
-                </form>
-                
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i> This process may take a few minutes to complete. The page will refresh once it's done.
+                <div class="mb-3">
+                    <h5>API Categorization Structure</h5>
+                    <ul>
+                        <li><strong>Level 1 (Data Type):</strong> TEXT, IMAGE, VIDEO, LOCATION, NETWORK</li>
+                        <li><strong>Level 2 (Entity):</strong> PERSON, ORGANIZATION, DOMAIN, DEVICE, ADDRESS, etc.</li>
+                        <li><strong>Level 3 (Attribute):</strong> NAME, EMAIL, PHONE, IP, URL, FACE, etc.</li>
+                    </ul>
                 </div>
+                
+                <div class="mb-3">
+                    <h5>OSINT API Categories</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Data Types</th>
+                                    <th>Example APIs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Personal Information</td>
+                                    <td>TEXT/PERSON/[NAME,EMAIL,PHONE]</td>
+                                    <td>EmailRep, Hunter.io, TrueCaller</td>
+                                </tr>
+                                <tr>
+                                    <td>Network Intelligence</td>
+                                    <td>NETWORK/DEVICE/[IP,DOMAIN,URL]</td>
+                                    <td>IPinfo, Shodan, VirusTotal</td>
+                                </tr>
+                                <tr>
+                                    <td>Image Analysis</td>
+                                    <td>IMAGE/PERSON/[FACE,OBJECT]</td>
+                                    <td>PimEyes, Google Lens, TinEye</td>
+                                </tr>
+                                <tr>
+                                    <td>Location Intelligence</td>
+                                    <td>LOCATION/ADDRESS/[COORDINATES,ADDRESS]</td>
+                                    <td>Google Maps, OpenStreetMap, IPGeolocation</td>
+                                </tr>
+                                <tr>
+                                    <td>Social Media</td>
+                                    <td>TEXT/PERSON/[USERNAME,HANDLE]</td>
+                                    <td>Namecheckr, Sherlock, SocialScan</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('populate_osint_apis') }}" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Populate OSINT APIs
+                    </a>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle"></i> Click the button above to add all pre-defined OSINT APIs to your database. This only needs to be done once.
+                </div>
+                
+                <p>You can also add your own custom APIs using the form on the left.</p>
             </div>
         </div>
                 

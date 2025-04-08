@@ -36,26 +36,78 @@ def query_apis(case_id, llm_analysis, available_apis):
     results = []
     
     try:
-        # Map recommended API types to available APIs
-        recommended_types = llm_analysis.get('recommended_api_types', [])
+        # Get API category recommendations from LLM analysis
+        recommended_categories = llm_analysis.get('recommended_api_categories', [])
         query_parameters = llm_analysis.get('query_parameters', {})
         
-        logger.debug(f"Recommended API types: {recommended_types}")
+        logger.debug(f"Recommended API categories: {recommended_categories}")
         logger.debug(f"Available APIs: {[api.api_name for api in available_apis]}")
         
         for api in available_apis:
             # Check if this API should be used based on LLM recommendations
-            api_type_match = False
-            api_name_lower = api.api_name.lower()
+            api_category_match = False
             
-            # Map API to recommended types
-            for api_type in recommended_types:
-                if api_type.lower() in api_name_lower or api_type.lower() in api.description.lower():
-                    api_type_match = True
-                    break
+            # Process the API's endpoints to check for category matches
+            if api.endpoints:
+                try:
+                    endpoints = json.loads(api.endpoints)
+                    for endpoint_name, endpoint_config in endpoints.items():
+                        # Get the endpoint's categorization (defaulting to empty strings)
+                        data_type = endpoint_config.get('data_type', '')
+                        entity_type = endpoint_config.get('entity_type', '')
+                        attribute_type = endpoint_config.get('attribute_type', '')
+                        
+                        # If the endpoint doesn't have categorization, try to use 'type' field for backward compatibility
+                        if not data_type and 'type' in endpoint_config:
+                            # Try to infer data_type, entity_type from 'type'
+                            endpoint_type = endpoint_config.get('type', '').lower()
+                            
+                            if 'email' in endpoint_type:
+                                data_type = 'TEXT'
+                                entity_type = 'PERSON'
+                                attribute_type = 'EMAIL'
+                            elif 'phone' in endpoint_type:
+                                data_type = 'TEXT'
+                                entity_type = 'PERSON'
+                                attribute_type = 'PHONE'
+                            elif 'social' in endpoint_type:
+                                data_type = 'TEXT'
+                                entity_type = 'PERSON'
+                                attribute_type = 'USERNAME'
+                            elif 'location' in endpoint_type or 'geo' in endpoint_type:
+                                data_type = 'LOCATION'
+                                entity_type = 'ADDRESS'
+                                attribute_type = 'COORDINATES'
+                            elif 'image' in endpoint_type:
+                                data_type = 'IMAGE'
+                                entity_type = 'PERSON'
+                                attribute_type = 'FACE'
+                            
+                        # Skip endpoints without proper categorization
+                        if not data_type or not entity_type or not attribute_type:
+                            continue
+                        
+                        # Try to match with recommended categories
+                        for category in recommended_categories:
+                            rec_data_type = category.get('data_type', '')
+                            rec_entity_type = category.get('entity_type', '')
+                            rec_attribute_type = category.get('attribute_type', '')
+                            
+                            # Check if this endpoint matches the recommended category
+                            # We'll consider it a match if the data_type and at least one other field matches
+                            if (data_type and rec_data_type and data_type.upper() == rec_data_type.upper() and 
+                                ((entity_type and rec_entity_type and entity_type.upper() == rec_entity_type.upper()) or
+                                 (attribute_type and rec_attribute_type and attribute_type.upper() == rec_attribute_type.upper()))):
+                                api_category_match = True
+                                break
+                                
+                        if api_category_match:
+                            break
+                except (json.JSONDecodeError, AttributeError) as e:
+                    logger.warning(f"Error parsing endpoints for API {api.api_name}: {e}")
             
-            if not api_type_match:
-                logger.debug(f"Skipping API {api.api_name} - not in recommended types")
+            if not api_category_match:
+                logger.debug(f"Skipping API {api.api_name} - does not match any recommended category")
                 continue
             
             # Get API configuration
@@ -67,16 +119,61 @@ def query_apis(case_id, llm_analysis, available_apis):
             # Query each relevant endpoint
             for endpoint_name, endpoint_config in endpoints.items():
                 try:
-                    # Determine if this endpoint should be queried based on parameters
-                    endpoint_type = endpoint_config.get('type', '').lower()
-                    params_to_use = []
+                    # Get the endpoint's categorization (defaulting to empty strings)
+                    data_type = endpoint_config.get('data_type', '')
+                    entity_type = endpoint_config.get('entity_type', '')
+                    attribute_type = endpoint_config.get('attribute_type', '')
                     
-                    for param_type, param_values in query_parameters.items():
-                        if param_type.lower() in endpoint_type and param_values:
-                            params_to_use.extend(param_values)
+                    # If the endpoint doesn't have categorization, try to use 'type' field for backward compatibility
+                    if not data_type and 'type' in endpoint_config:
+                        # Try to infer data_type, entity_type from 'type'
+                        endpoint_type = endpoint_config.get('type', '').lower()
+                        
+                        if 'email' in endpoint_type:
+                            data_type = 'TEXT'
+                            entity_type = 'PERSON'
+                            attribute_type = 'EMAIL'
+                        elif 'phone' in endpoint_type:
+                            data_type = 'TEXT'
+                            entity_type = 'PERSON'
+                            attribute_type = 'PHONE'
+                        elif 'social' in endpoint_type:
+                            data_type = 'TEXT'
+                            entity_type = 'PERSON'
+                            attribute_type = 'USERNAME'
+                        elif 'location' in endpoint_type or 'geo' in endpoint_type:
+                            data_type = 'LOCATION'
+                            entity_type = 'ADDRESS'
+                            attribute_type = 'COORDINATES'
+                        elif 'image' in endpoint_type:
+                            data_type = 'IMAGE'
+                            entity_type = 'PERSON'
+                            attribute_type = 'FACE'
+                    
+                    # Skip endpoints without proper categorization
+                    if not data_type or not entity_type or not attribute_type:
+                        logger.debug(f"Skipping endpoint {endpoint_name} - missing categorization")
+                        continue
+                    
+                    # Create a category key for matching with query parameters
+                    category_key = f"{data_type}/{entity_type}/{attribute_type}"
+                    
+                    # Check if we have parameters for this category
+                    params_to_use = []
+                    if category_key in query_parameters and query_parameters[category_key]:
+                        params_to_use = query_parameters[category_key]
+                    
+                    # If no direct category match, check for backward compatibility with old query parameter format
+                    if not params_to_use:
+                        # For backward compatibility, check the old endpoint 'type' field
+                        endpoint_type = endpoint_config.get('type', '').lower()
+                        for param_type, param_values in query_parameters.items():
+                            # Handle both new format (TEXT/PERSON/EMAIL) and old format (email)
+                            if '/' not in param_type and param_type.lower() in endpoint_type and param_values:
+                                params_to_use.extend(param_values)
                     
                     if not params_to_use:
-                        logger.debug(f"Skipping endpoint {endpoint_name} - no matching parameters")
+                        logger.debug(f"Skipping endpoint {endpoint_name} - no matching parameters for {category_key}")
                         continue
                     
                     # Prepare request URL and headers
@@ -136,6 +233,7 @@ def query_apis(case_id, llm_analysis, available_apis):
                         # Add to results list
                         result_dict = api_result.to_dict()
                         result_dict['api_name'] = api.api_name
+                        result_dict['category'] = category_key  # Add category information
                         results.append(result_dict)
                         
                     else:
@@ -158,6 +256,7 @@ def query_apis(case_id, llm_analysis, available_apis):
                         # Add to results list
                         result_dict = api_result.to_dict()
                         result_dict['api_name'] = api.api_name
+                        result_dict['category'] = category_key  # Add category information
                         results.append(result_dict)
                     
                     # Rate limiting - pause between API calls
@@ -183,6 +282,7 @@ def query_apis(case_id, llm_analysis, available_apis):
                     # Add to results list
                     result_dict = api_result.to_dict()
                     result_dict['api_name'] = api.api_name
+                    result_dict['category'] = category_key if 'category_key' in locals() else "UNKNOWN"  # Add category information
                     results.append(result_dict)
         
         logger.debug(f"Completed API queries. Results count: {len(results)}")
@@ -433,9 +533,14 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
         return results
     
     try:
-        # Get recommended API types and parameters from LLM analysis
-        recommended_types = llm_analysis.get('recommended_api_types', [])
+        # Get recommended categories and parameters from LLM analysis
+        recommended_categories = llm_analysis.get('recommended_api_categories', [])
         query_parameters = llm_analysis.get('query_parameters', {})
+        
+        # For backward compatibility, extract simple types if new format isn't available
+        recommended_types = []
+        if not recommended_categories:
+            recommended_types = llm_analysis.get('recommended_api_types', [])
         
         # Define RapidAPI mappings - these are common OSINT APIs on RapidAPI
         rapidapi_mappings = {
@@ -525,6 +630,18 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
             ]
         }
         
+        # Create a mapping between new category format and old data types
+        category_to_type_mapping = {
+            'TEXT/PERSON/EMAIL': 'email',
+            'TEXT/PERSON/PHONE': 'phone',
+            'TEXT/PERSON/USERNAME': 'social',
+            'TEXT/PERSON/NAME': 'name',
+            'NETWORK/DEVICE/IP': 'ipaddress',
+            'TEXT/ORGANIZATION/DOMAIN': 'domain',
+            'LOCATION/ADDRESS/COORDINATES': 'location',
+            'IMAGE/PERSON/FACE': 'image'
+        }
+        
         # Process image data if available
         image_data = None
         
@@ -546,14 +663,24 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                 'endpoint': '/analyze',
                                 'method': 'POST',
                                 'content_type': 'multipart/form-data',
-                                'param_name': 'image'
+                                'param_name': 'image',
+                                'data_type': 'IMAGE',
+                                'entity_type': 'PERSON',
+                                'attribute_type': 'FACE'
                             }
                         ]
         
         # Query RapidAPI for each data type
         for data_type, param_values in query_parameters.items():
-            if data_type in rapidapi_mappings and param_values:
-                for api_config in rapidapi_mappings[data_type]:
+            # Map new category format to old data types
+            api_type = data_type
+            if '/' in data_type and data_type in category_to_type_mapping:
+                api_type = category_to_type_mapping[data_type]
+            
+            if api_type in rapidapi_mappings and param_values:
+                for api_config in rapidapi_mappings[api_type]:
+                    # Add category information for later reference
+                    api_config['category'] = data_type
                     for param_value in param_values:
                         if param_value and param_value.strip():
                             try:
@@ -633,6 +760,7 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     # Add to results list and skip to next API
                                     result_dict = api_result.to_dict()
                                     result_dict['api_name'] = api_name
+                                    result_dict['category'] = api_config.get('category', data_type)
                                     results.append(result_dict)
                                     continue
                                 
@@ -690,6 +818,7 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     # Add to results list
                                     result_dict = api_result.to_dict()
                                     result_dict['api_name'] = api_name
+                                    result_dict['category'] = api_config.get('category', data_type)
                                     results.append(result_dict)
                                     
                                 elif response.status_code == 401 or response.status_code == 403:
@@ -736,6 +865,7 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     # Add to results list
                                     result_dict = api_result.to_dict()
                                     result_dict['api_name'] = api_name
+                                    result_dict['category'] = api_config.get('category', data_type)
                                     results.append(result_dict)
                                 
                                 # Rate limiting - pause between API calls
@@ -766,6 +896,7 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     # Add to results list
                                     result_dict = api_result.to_dict()
                                     result_dict['api_name'] = api_name
+                                    result_dict['category'] = api_config.get('category', "UNKNOWN")
                                     results.append(result_dict)
         
         logger.debug(f"Completed RapidAPI queries. Results count: {len(results)}")
