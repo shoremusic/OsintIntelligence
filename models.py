@@ -2,6 +2,95 @@ from app import db
 from datetime import datetime
 import json
 
+class WorkflowDefinition(db.Model):
+    """Model for storing workflow definitions for automated intelligence gathering"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(256), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    steps = db.Column(db.Text, nullable=True)  # JSON string of workflow steps
+    schedule = db.Column(db.Text, nullable=True)  # JSON string of schedule configuration
+    trigger_type = db.Column(db.String(64), nullable=True)  # 'schedule', 'event', 'manual'
+    trigger_config = db.Column(db.Text, nullable=True)  # JSON string of trigger configuration
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    executions = db.relationship('WorkflowExecution', backref='workflow', lazy=True, cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f'<WorkflowDefinition {self.id}: {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'steps': json.loads(self.steps) if self.steps else [],
+            'schedule': json.loads(self.schedule) if self.schedule else None,
+            'trigger_type': self.trigger_type,
+            'trigger_config': json.loads(self.trigger_config) if self.trigger_config else None,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+
+class WorkflowExecution(db.Model):
+    """Model for storing workflow execution records"""
+    id = db.Column(db.Integer, primary_key=True)
+    workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_definition.id'), nullable=False)
+    status = db.Column(db.String(32), nullable=False)  # 'running', 'completed', 'failed'
+    context = db.Column(db.Text, nullable=True)  # JSON string of execution context
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+    
+    # Relationships
+    steps = db.relationship('WorkflowStep', backref='execution', lazy=True, cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f'<WorkflowExecution {self.id}: {self.status}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'workflow_id': self.workflow_id,
+            'status': self.status,
+            'context': json.loads(self.context) if self.context else {},
+            'start_time': self.start_time.isoformat(),
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'error': self.error,
+            'steps': [step.to_dict() for step in self.steps]
+        }
+
+class WorkflowStep(db.Model):
+    """Model for storing workflow step execution records"""
+    id = db.Column(db.Integer, primary_key=True)
+    execution_id = db.Column(db.Integer, db.ForeignKey('workflow_execution.id'), nullable=False)
+    step_number = db.Column(db.Integer, nullable=False)
+    step_type = db.Column(db.String(64), nullable=False)
+    status = db.Column(db.String(32), nullable=False)  # 'running', 'completed', 'failed'
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=True)
+    result = db.Column(db.Text, nullable=True)  # JSON string of step result
+    error = db.Column(db.Text, nullable=True)
+    
+    def __repr__(self):
+        return f'<WorkflowStep {self.id}: {self.step_type}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'execution_id': self.execution_id,
+            'step_number': self.step_number,
+            'step_type': self.step_type,
+            'status': self.status,
+            'start_time': self.start_time.isoformat(),
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'result': json.loads(self.result) if self.result else None,
+            'error': self.error
+        }
+
 class APIConfiguration(db.Model):
     """Model for storing API configurations for OSINT searches"""
     id = db.Column(db.Integer, primary_key=True)

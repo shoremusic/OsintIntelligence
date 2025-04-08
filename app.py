@@ -35,13 +35,17 @@ db.init_app(app)
 
 with app.app_context():
     # Import the models here
-    from models import APIConfiguration, OSINTCase, DataPoint, APIResult
+    from models import (
+        APIConfiguration, OSINTCase, DataPoint, APIResult,
+        WorkflowDefinition, WorkflowExecution, WorkflowStep
+    )
     db.create_all()
 
 # Import services after app and db initialization
 from openai_service import process_input_with_llm, analyze_data_with_llm, generate_report_with_llm, ai_provider
 from api_service import query_apis, query_rapidapi, get_all_apis, add_api_config, get_api_config, update_api_config, delete_api_config
 from web_scraper import get_website_text_content
+import workflow_engine
 
 @app.route('/')
 def index():
@@ -338,6 +342,204 @@ def populate_osint_apis():
         flash(f"Error populating OSINT APIs: {str(e)}", "danger")
         return redirect(url_for('api_config'))
 
+@app.route('/workflows', methods=['GET', 'POST'])
+def workflows():
+    """Route to manage intelligence gathering workflows"""
+    if request.method == 'POST':
+        try:
+            # Add new workflow
+            name = request.form.get('name')
+            description = request.form.get('description')
+            steps = request.form.get('steps')
+            
+            # Schedule configuration
+            schedule_enabled = request.form.get('schedule_enabled') == 'on'
+            if schedule_enabled:
+                frequency = request.form.get('frequency')
+                interval = int(request.form.get('interval', 1))
+                schedule = {'frequency': frequency, 'interval': interval}
+            else:
+                schedule = None
+            
+            # Trigger configuration
+            trigger_type = request.form.get('trigger_type')
+            trigger_config = None
+            
+            if trigger_type == 'event':
+                event_type = request.form.get('event_type')
+                data_type = request.form.get('data_type')
+                trigger_config = {'event_type': event_type, 'data_type': data_type}
+            
+            # Validate steps
+            if not steps:
+                flash("Workflow steps are required", "danger")
+                return redirect(url_for('workflows'))
+            
+            try:
+                steps_data = json.loads(steps)
+            except json.JSONDecodeError:
+                flash("Invalid workflow steps JSON", "danger")
+                return redirect(url_for('workflows'))
+            
+            # Create the workflow
+            workflow_engine.create_workflow(
+                name=name,
+                description=description,
+                steps=steps_data,
+                schedule=schedule,
+                trigger_type=trigger_type,
+                trigger_config=trigger_config
+            )
+            
+            flash("Workflow created successfully", "success")
+            return redirect(url_for('workflows'))
+            
+        except Exception as e:
+            logger.error(f"Error creating workflow: {str(e)}")
+            flash(f"Error creating workflow: {str(e)}", "danger")
+    
+    # Get all workflows
+    workflows = WorkflowDefinition.query.all()
+    
+    # Get workflow execution history
+    executions = WorkflowExecution.query.order_by(WorkflowExecution.start_time.desc()).limit(20).all()
+    
+    return render_template('workflows.html', 
+                          workflows=workflows,
+                          executions=executions)
+
+@app.route('/workflows/<int:workflow_id>/execute', methods=['POST'])
+def execute_workflow(workflow_id):
+    """Route to manually execute a workflow"""
+    try:
+        # Get context data from request
+        context = request.json or {}
+        
+        # Execute the workflow
+        result = workflow_engine.execute_workflow(workflow_id, context)
+        
+        if result:
+            return jsonify({"status": "success", "message": "Workflow execution started"})
+        else:
+            return jsonify({"status": "error", "message": "Failed to start workflow execution"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error executing workflow: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/workflows/<int:workflow_id>', methods=['PUT', 'DELETE'])
+def manage_workflow(workflow_id):
+    """Route to manage a workflow"""
+    if request.method == 'PUT':
+        try:
+            # Update workflow
+            data = request.json
+            workflow = WorkflowDefinition.query.get(workflow_id)
+            
+            if not workflow:
+                return jsonify({"status": "error", "message": "Workflow not found"}), 404
+            
+            # Update fields
+            if 'name' in data:
+                workflow.name = data['name']
+            if 'description' in data:
+                workflow.description = data['description']
+            if 'steps' in data:
+                workflow.steps = json.dumps(data['steps'])
+            if 'schedule' in data:
+                workflow.schedule = json.dumps(data['schedule']) if data['schedule'] else None
+            if 'trigger_type' in data:
+                workflow.trigger_type = data['trigger_type']
+            if 'trigger_config' in data:
+                workflow.trigger_config = json.dumps(data['trigger_config']) if data['trigger_config'] else None
+            if 'is_active' in data:
+                workflow.is_active = data['is_active']
+            
+            workflow.updated_at = datetime.now()
+            db.session.commit()
+            
+            return jsonify({"status": "success", "message": "Workflow updated successfully"})
+            
+        except Exception as e:
+            logger.error(f"Error updating workflow: {str(e)}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+    
+    elif request.method == 'DELETE':
+        try:
+            # Delete workflow
+            workflow = WorkflowDefinition.query.get(workflow_id)
+            
+            if not workflow:
+                return jsonify({"status": "error", "message": "Workflow not found"}), 404
+            
+            db.session.delete(workflow)
+            db.session.commit()
+            
+            return jsonify({"status": "success", "message": "Workflow deleted successfully"})
+            
+        except Exception as e:
+            logger.error(f"Error deleting workflow: {str(e)}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/workflow_executions/<int:execution_id>', methods=['GET'])
+def workflow_execution_details(execution_id):
+    """Route to get workflow execution details"""
+    try:
+        execution = WorkflowExecution.query.get(execution_id)
+        
+        if not execution:
+            return jsonify({"status": "error", "message": "Execution not found"}), 404
+        
+        # Get workflow details
+        workflow = WorkflowDefinition.query.get(execution.workflow_id)
+        
+        # Get execution steps
+        steps = WorkflowStep.query.filter_by(execution_id=execution_id).order_by(WorkflowStep.step_number).all()
+        
+        return jsonify({
+            "status": "success",
+            "execution": execution.to_dict(),
+            "workflow": workflow.to_dict() if workflow else None,
+            "steps": [step.to_dict() for step in steps]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting execution details: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/start_workflow_engine', methods=['POST'])
+def start_workflow_engine_route():
+    """Route to start the workflow engine"""
+    try:
+        workflow_engine.start_workflow_engine()
+        return jsonify({"status": "success", "message": "Workflow engine started"})
+    except Exception as e:
+        logger.error(f"Error starting workflow engine: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/stop_workflow_engine', methods=['POST'])
+def stop_workflow_engine_route():
+    """Route to stop the workflow engine"""
+    try:
+        workflow_engine.stop_workflow_engine()
+        return jsonify({"status": "success", "message": "Workflow engine stopped"})
+    except Exception as e:
+        logger.error(f"Error stopping workflow engine: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.errorhandler(500)
 def server_error(e):
     return render_template('base.html', error="Server error occurred. Please try again."), 500
+
+# Initialize the workflow engine when the app starts
+# We'll initialize the workflow engine on first request to ensure all dependencies are loaded
+@app.route('/initialize_workflow_engine', methods=['POST'])
+def initialize_workflow_engine():
+    """Initialize the workflow engine on demand"""
+    try:
+        workflow_engine.start_workflow_engine()
+        logger.info("Workflow engine started")
+        return jsonify({"status": "success", "message": "Workflow engine initialized"})
+    except Exception as e:
+        logger.error(f"Error starting workflow engine: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
