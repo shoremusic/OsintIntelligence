@@ -117,6 +117,41 @@
         </div>
         
         <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0"><i class="fas fa-rocket"></i> RapidAPI Configuration</h3>
+            </div>
+            <div class="card-body">
+                <p>RapidAPI is a marketplace that hosts thousands of APIs, many of which are useful for OSINT investigations. To use RapidAPI, you need to set your RapidAPI key as an environment variable.</p>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> The system will automatically query relevant RapidAPI APIs based on the data provided by the user and AI analysis.
+                </div>
+                
+                <div class="mb-3">
+                    <label for="rapidapi_key" class="form-label">RapidAPI Key</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        <input type="password" class="form-control" id="rapidapi_key" placeholder="Your RapidAPI key will be saved as an environment variable">
+                        <button class="btn btn-primary" type="button" id="save-rapidapi-key">Save Key</button>
+                    </div>
+                    <div class="form-text">Your RapidAPI key will be stored as the RAPIDAPI_KEY environment variable.</div>
+                </div>
+                
+                <div class="mt-3">
+                    <h5>Popular OSINT APIs on RapidAPI</h5>
+                    <ul>
+                        <li><strong>Email Verification APIs</strong> - Validate email addresses and check reputation</li>
+                        <li><strong>Phone Validation APIs</strong> - Verify phone numbers and get carrier information</li>
+                        <li><strong>IP Geolocation APIs</strong> - Get location information from IP addresses</li>
+                        <li><strong>Domain Analysis APIs</strong> - Gather information about domains and websites</li>
+                        <li><strong>Social Media Intelligence APIs</strong> - Search and analyze social media profiles</li>
+                        <li><strong>Person Lookup APIs</strong> - Find information about individuals</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+                
+        <div class="card mb-4">
             <div class="card-header bg-secondary text-white">
                 <h3 class="mb-0"><i class="fas fa-question-circle"></i> How to Configure APIs</h3>
             </div>

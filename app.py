@@ -22,8 +22,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure the database - using SQLite for simplicity
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///osint.db"
+# Configure the database - using PostgreSQL
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
@@ -40,7 +40,7 @@ with app.app_context():
 
 # Import services after app and db initialization
 from openai_service import process_input_with_llm, analyze_data_with_llm, generate_report_with_llm, ai_provider
-from api_service import query_apis, get_all_apis, add_api_config, get_api_config, update_api_config, delete_api_config
+from api_service import query_apis, query_rapidapi, get_all_apis, add_api_config, get_api_config, update_api_config, delete_api_config
 from web_scraper import get_website_text_content
 
 @app.route('/')
@@ -109,6 +109,12 @@ def submit_osint():
         vehicle = request.form.get('vehicle', '')
         additional_info = request.form.get('additional_info', '')
         
+        # Ensure at least one field is filled
+        if not any([name, phone, email, social_media, location, vehicle, additional_info, 
+                   'image' in request.files and request.files['image'].filename]):
+            flash("Please provide at least one piece of information to begin the investigation.", "warning")
+            return redirect(url_for('index'))
+        
         # Handle image if provided
         image_data = None
         if 'image' in request.files and request.files['image'].filename:
@@ -118,7 +124,7 @@ def submit_osint():
         # Create a new OSINT case
         with app.app_context():
             case = OSINTCase(
-                name=name,
+                name=name or "Unnamed Case",  # Default name if none provided
                 created_at=datetime.now()
             )
             db.session.add(case)
@@ -168,16 +174,23 @@ def submit_osint():
         # Query selected APIs based on LLM analysis
         api_results = query_apis(case.id, llm_analysis, all_apis)
         
+        # Query RapidAPI for additional data
+        logger.debug("Querying RapidAPI for additional data...")
+        rapidapi_results = query_rapidapi(case.id, llm_analysis, all_apis, input_data)
+        
+        # Combine all API results
+        combined_api_results = api_results + rapidapi_results
+        
         # Analyze gathered data with LLM
-        data_analysis = analyze_data_with_llm(api_results, input_data)
+        data_analysis = analyze_data_with_llm(combined_api_results, input_data)
         
         # Generate report
-        report = generate_report_with_llm(data_analysis, api_results, input_data)
+        report = generate_report_with_llm(data_analysis, combined_api_results, input_data)
         
         # Store session data for report viewing
         session['case_id'] = case.id
         session['report'] = report
-        session['api_results'] = api_results
+        session['api_results'] = combined_api_results
         
         return redirect(url_for('report'))
     
@@ -258,6 +271,26 @@ def refresh_models():
     except Exception as e:
         logger.error(f"Error refreshing models: {str(e)}")
         return jsonify({"success": False, "error": str(e)})
+
+@app.route('/save_api_key', methods=['POST'])
+def save_api_key():
+    try:
+        data = request.json
+        key_name = data.get('key_name')
+        key_value = data.get('key_value')
+        
+        if not key_name or not key_value:
+            return jsonify({"success": False, "error": "Key name and value are required"}), 400
+        
+        # In a production environment, you would securely store these in environment variables
+        # For Replit, we're using the environment variable system
+        os.environ[key_name] = key_value
+        logger.info(f"API key '{key_name}' saved successfully")
+        
+        return jsonify({"success": True, "message": f"API key '{key_name}' saved successfully"})
+    except Exception as e:
+        logger.error(f"Error saving API key: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.errorhandler(500)
 def server_error(e):

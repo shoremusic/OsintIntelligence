@@ -9,6 +9,10 @@
             </div>
             <div class="card-body">
                 <form id="osint-form" action="/submit_osint" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> All fields are optional, but at least one field must be filled to start an investigation.
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="name" class="form-label">Name</label>
                         <input type="text" class="form-control" id="name" name="name" placeholder="Full name of the subject">
@@ -35,8 +39,9 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="location" class="form-label">Last Known Location</label>
-                        <input type="text" class="form-control" id="location" name="location" placeholder="Address, city, or coordinates">
+                        <label for="location" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="location" name="location" placeholder="Address, city, suburb, town, state, country or combination">
+                        <div class="form-text">Can be specific or broad depending on available information.</div>
                     </div>
                     
                     <div class="mb-3">
@@ -45,11 +50,12 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="image" class="form-label">Image (optional)</label>
+                        <label for="image" class="form-label">Image</label>
                         <input type="file" class="form-control" id="image" name="image" accept="image/*">
                         <div id="image-preview-container" class="image-preview-container d-none mt-2">
                             <img id="image-preview" class="image-preview d-none" alt="Preview">
                         </div>
+                        <div class="form-text">Upload an image of the subject or relevant to the investigation.</div>
                     </div>
                     
                     <div class="mb-3">
@@ -58,7 +64,7 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" id="submit-osint" class="btn btn-primary">
                             <i class="fas fa-search"></i> Start OSINT Investigation
                         </button>
                     </div>

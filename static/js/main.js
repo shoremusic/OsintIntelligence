@@ -27,6 +27,43 @@ function initApiConfigForm() {
     const apiConfigForm = document.getElementById('api-config-form');
     if (!apiConfigForm) return;
     
+    // Handle RapidAPI key saving
+    const saveRapidApiKeyBtn = document.getElementById('save-rapidapi-key');
+    if (saveRapidApiKeyBtn) {
+        saveRapidApiKeyBtn.addEventListener('click', function() {
+            const rapidApiKey = document.getElementById('rapidapi_key').value.trim();
+            if (!rapidApiKey) {
+                alert('Please enter a RapidAPI key.');
+                return;
+            }
+            
+            // Send a request to save the key as an environment variable
+            fetch('/save_api_key', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    key_name: 'RAPIDAPI_KEY',
+                    key_value: rapidApiKey
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('RapidAPI key saved successfully!');
+                    document.getElementById('rapidapi_key').value = '';
+                } else {
+                    alert(`Error saving RapidAPI key: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving RapidAPI key:', error);
+                alert(`Error: ${error.message}`);
+            });
+        });
+    }
+    
     apiConfigForm.addEventListener('submit', function(event) {
         // Form validation is handled by Bootstrap
         if (!apiConfigForm.checkValidity()) {
@@ -271,7 +308,7 @@ function initOsintForm() {
     const osintForm = document.getElementById('osint-form');
     if (!osintForm) return;
     
-    // Handle file input change
+    // Handle primary image input change
     const imageInput = document.getElementById('image');
     const imagePreview = document.getElementById('image-preview');
     
@@ -294,14 +331,44 @@ function initOsintForm() {
         });
     }
     
-    // Form validation
+    // Secondary image handling has been removed as per requirements
+    
+    // Form validation - ensure at least one field is filled
     osintForm.addEventListener('submit', function(event) {
-        if (!osintForm.checkValidity()) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
+        event.preventDefault(); // Prevent form submission initially
         
-        osintForm.classList.add('was-validated');
+        // Check if at least one field has a value
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const socialMedia = document.getElementById('social_media').value.trim();
+        const location = document.getElementById('location').value.trim();
+        const vehicle = document.getElementById('vehicle').value.trim();
+        const additionalInfo = document.getElementById('additional_info').value.trim();
+        const hasImage = imageInput && imageInput.files && imageInput.files.length > 0;
+        
+        const hasAtLeastOneField = name || phone || email || socialMedia || location || 
+                                  vehicle || additionalInfo || hasImage;
+        
+        if (!hasAtLeastOneField) {
+            // Show error message
+            if (!document.getElementById('validation-error')) {
+                const errorDiv = document.createElement('div');
+                errorDiv.id = 'validation-error';
+                errorDiv.className = 'alert alert-danger mt-3';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please fill in at least one field to begin the OSINT investigation.';
+                osintForm.insertBefore(errorDiv, document.getElementById('submit-osint').parentNode);
+            }
+        } else {
+            // Remove error message if it exists
+            const errorDiv = document.getElementById('validation-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+            
+            // Continue with form submission
+            osintForm.submit();
+        }
     });
 }
 

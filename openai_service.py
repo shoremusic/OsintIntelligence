@@ -237,7 +237,8 @@ def process_input_with_llm(input_data):
         Last Known Location: {input_data.get('location', 'Not provided')}
         Vehicle Information: {input_data.get('vehicle', 'Not provided')}
         Additional Information: {input_data.get('additional_info', 'Not provided')}
-        Image Provided: {'Yes' if input_data.get('has_image') else 'No'}
+        Primary Image Provided: {'Yes' if input_data.get('has_image') else 'No'}
+        Secondary Image Provided: {'Yes' if input_data.get('has_secondary_image') else 'No'}
         
         Based on this data, determine which types of APIs would be most useful to query.
         Consider APIs for:
@@ -327,6 +328,8 @@ def analyze_data_with_llm(api_results, input_data):
         Social Media Handles: {input_data.get('social_media', 'Not provided')}
         Last Known Location: {input_data.get('location', 'Not provided')}
         Vehicle Information: {input_data.get('vehicle', 'Not provided')}
+        Primary Image Provided: {'Yes' if input_data.get('has_image') else 'No'}
+        Secondary Image Provided: {'Yes' if input_data.get('has_secondary_image') else 'No'}
         
         API RESULTS:
         {api_results_text}
@@ -421,6 +424,8 @@ def generate_report_with_llm(data_analysis, api_results, input_data):
         
         SUBJECT INFORMATION:
         Name: {input_data.get('name', 'Subject')}
+        Primary Image Provided: {'Yes' if input_data.get('has_image') else 'No'}
+        Secondary Image Provided: {'Yes' if input_data.get('has_secondary_image') else 'No'}
         
         ANALYZED DATA:
         {data_analysis_text}
@@ -541,12 +546,13 @@ def generate_report_with_llm(data_analysis, api_results, input_data):
             ]
         }
 
-def analyze_image(base64_image):
+def analyze_image(base64_image, image_type="primary"):
     """
     Analyze an image using vision capabilities
     
     Args:
         base64_image (str): Base64-encoded image
+        image_type (str): Type of image ('primary' or 'secondary')
         
     Returns:
         str: Analysis of the image
@@ -560,6 +566,12 @@ def analyze_image(base64_image):
         if ai_provider.provider != "openai":
             ai_provider.set_model("openai:gpt-4o")
             
+        # Customize prompt based on image type
+        if image_type == "primary":
+            prompt_text = "Analyze this primary image for OSINT purposes. Identify visible details that could be useful for intelligence gathering such as location indicators, identifiable objects, text, landmarks, etc."
+        else:
+            prompt_text = "Analyze this secondary image for OSINT purposes. Look for additional context, comparative elements, or supplementary information. Identify details that might complement or contrast with the primary image."
+            
         response = ai_provider.chat_completion(
             messages=[
                 {
@@ -567,7 +579,7 @@ def analyze_image(base64_image):
                     "content": [
                         {
                             "type": "text",
-                            "text": "Analyze this image for OSINT purposes. Identify visible details that could be useful for intelligence gathering such as location indicators, identifiable objects, text, landmarks, etc."
+                            "text": prompt_text
                         },
                         {
                             "type": "image_url",
