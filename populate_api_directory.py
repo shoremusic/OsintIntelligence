@@ -16,9 +16,141 @@ from models import APIConfiguration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Constants for API directories
-APIS_GURU_URL = "https://api.apis.guru/v2/list.json"
-PUBLIC_APIS_URL = "https://api.publicapis.org/entries"
+# Constants for API directories - with fallback URLs
+APIS_GURU_URLS = [
+    "https://api.apis.guru/v2/list.json",
+    "https://raw.githubusercontent.com/APIs-guru/openapi-directory/gh-pages/v2/list.json"
+]
+PUBLIC_APIS_URLS = [
+    "https://api.publicapis.org/entries",
+    "https://github.com/public-apis/public-apis/raw/master/api/entries.json"
+]
+
+# For resilience, also include a small set of pre-defined OSINT APIs
+PREDEFINED_APIS = [
+    {
+        "api_name": "IPinfo",
+        "api_url": "https://ipinfo.io",
+        "api_key_env": "IPINFO_API_KEY",
+        "description": "IPinfo provides accurate IP address data that helps understand and reach targeted audiences. The service offers IP to geolocation, ASN, carrier information, and more.\n\nOSINT Categories: Location, Network, Digital Footprint",
+        "endpoints": json.dumps({
+            "ip_lookup": {
+                "path": "/{ip}",
+                "method": "GET",
+                "params": {
+                    "token": "{api_key}"
+                },
+                "description": "Get details for a specific IP address"
+            },
+            "bulk_lookup": {
+                "path": "/batch",
+                "method": "POST",
+                "params": {
+                    "token": "{api_key}"
+                },
+                "description": "Look up information for multiple IP addresses"
+            }
+        }),
+        "format": json.dumps({
+            "example": {
+                "ip": "8.8.8.8",
+                "hostname": "dns.google",
+                "city": "Mountain View",
+                "region": "California",
+                "country": "US",
+                "loc": "37.4056,-122.0775",
+                "org": "AS15169 Google LLC",
+                "postal": "94043",
+                "timezone": "America/Los_Angeles"
+            },
+            "osint_categories": ["location", "network", "digital_footprint"],
+            "source": "predefined"
+        })
+    },
+    {
+        "api_name": "EmailRep",
+        "api_url": "https://emailrep.io",
+        "api_key_env": "EMAILREP_API_KEY",
+        "description": "EmailRep is a system of crawlers, scanners, and enrichment services that collects reputation data on email addresses. It helps determine if an email is suspicious, malicious, or legitimate.\n\nOSINT Categories: Contact, Security, Digital Footprint",
+        "endpoints": json.dumps({
+            "email_lookup": {
+                "path": "/query/{email}",
+                "method": "GET",
+                "headers": {
+                    "Key": "{api_key}"
+                },
+                "description": "Lookup reputation information for an email address"
+            }
+        }),
+        "format": json.dumps({
+            "example": {
+                "email": "bill@microsoft.com",
+                "reputation": "high",
+                "suspicious": False,
+                "references": 79,
+                "details": {
+                    "blacklisted": False,
+                    "malicious_activity": False,
+                    "malicious_activity_recent": False,
+                    "credentials_leaked": True,
+                    "credentials_leaked_recent": False,
+                    "data_breach": True,
+                    "first_seen": "04/28/2008",
+                    "last_seen": "07/26/2020",
+                    "domain_exists": True,
+                    "domain_reputation": "high",
+                    "domain_age": "1975-04-04",
+                    "new_domain": False
+                }
+            },
+            "osint_categories": ["contact", "security", "digital_footprint"],
+            "source": "predefined"
+        })
+    },
+    {
+        "api_name": "Geocoding",
+        "api_url": "https://maps.googleapis.com/maps/api",
+        "api_key_env": "GOOGLE_MAPS_API_KEY",
+        "description": "Google Maps Geocoding API provides geocoding and reverse geocoding of addresses. Find location coordinates from addresses or addresses from coordinates for OSINT investigations.\n\nOSINT Categories: Location",
+        "endpoints": json.dumps({
+            "geocode": {
+                "path": "/geocode/json",
+                "method": "GET",
+                "params": {
+                    "address": "{address}",
+                    "key": "{api_key}"
+                },
+                "description": "Convert an address to geographic coordinates"
+            },
+            "reverse_geocode": {
+                "path": "/geocode/json",
+                "method": "GET",
+                "params": {
+                    "latlng": "{latitude},{longitude}",
+                    "key": "{api_key}"
+                },
+                "description": "Convert geographic coordinates to an address"
+            }
+        }),
+        "format": json.dumps({
+            "example": {
+                "results": [
+                    {
+                        "formatted_address": "1600 Amphitheatre Parkway, Mountain View, CA 94043, USA",
+                        "geometry": {
+                            "location": {
+                                "lat": 37.4224764,
+                                "lng": -122.0842499
+                            }
+                        }
+                    }
+                ]
+            },
+            "osint_categories": ["location"],
+            "source": "predefined"
+        })
+    }
+]
 
 # OSINT categories and relevant keywords
 OSINT_CATEGORIES = {
@@ -38,12 +170,28 @@ OSINT_CATEGORIES = {
 def fetch_apis_guru():
     """Fetch APIs from the APIs.guru directory"""
     logger.info("Fetching APIs from APIs.guru...")
+    
+    # Try all available URLs until one works
+    api_data = None
+    for url in APIS_GURU_URLS:
+        try:
+            logger.info(f"Trying to fetch APIs from {url}...")
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            api_data = response.json()
+            logger.info(f"Successfully fetched APIs from {url}")
+            break
+        except requests.RequestException as e:
+            logger.warning(f"Error fetching APIs from {url}: {str(e)}")
+    
+    # If all URLs failed, return empty list
+    if api_data is None:
+        logger.warning("All APIs.guru URLs failed. Using predefined APIs only.")
+        return []
+    
+    # Process the API data
+    apis = []
     try:
-        response = requests.get(APIS_GURU_URL)
-        response.raise_for_status()
-        api_data = response.json()
-        
-        apis = []
         for provider, provider_apis in api_data.items():
             for version, details in provider_apis["versions"].items():
                 # Filter for OSINT-relevant APIs
@@ -139,20 +287,35 @@ def fetch_apis_guru():
         logger.info(f"Found {len(apis)} OSINT-relevant APIs from APIs.guru")
         return apis
     
-    except requests.RequestException as e:
-        logger.error(f"Error fetching APIs from APIs.guru: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error processing APIs from APIs.guru: {str(e)}")
         return []
 
 def fetch_public_apis():
     """Fetch APIs from the Public APIs directory"""
     logger.info("Fetching APIs from Public APIs directory...")
+    
+    # Try all available URLs until one works
+    api_data = None
+    for url in PUBLIC_APIS_URLS:
+        try:
+            logger.info(f"Trying to fetch APIs from {url}...")
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            api_data = response.json()
+            logger.info(f"Successfully fetched APIs from {url}")
+            break
+        except requests.RequestException as e:
+            logger.warning(f"Error fetching APIs from {url}: {str(e)}")
+    
+    # If all URLs failed, return empty list
+    if api_data is None:
+        logger.warning("All Public APIs URLs failed. Using predefined APIs only.")
+        return []
+    
+    # Process the API data
+    apis = []
     try:
-        response = requests.get(PUBLIC_APIS_URL)
-        response.raise_for_status()
-        api_data = response.json()
-        
-        apis = []
-        
         # Map Public API categories to our OSINT categories
         category_mapping = {
             "Security": ["security", "digital_footprint"],
@@ -244,8 +407,8 @@ def fetch_public_apis():
         logger.info(f"Found {len(apis)} OSINT-relevant APIs from Public APIs directory")
         return apis
     
-    except requests.RequestException as e:
-        logger.error(f"Error fetching APIs from Public APIs directory: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error processing APIs from Public APIs directory: {str(e)}")
         return []
 
 def add_api_config_if_not_exists(api_data):
@@ -279,6 +442,11 @@ def main():
     logger.info("Starting API directory population...")
     
     with app.app_context():
+        # Add predefined APIs first
+        logger.info(f"Adding {len(PREDEFINED_APIS)} predefined OSINT APIs to database")
+        for api_data in PREDEFINED_APIS:
+            add_api_config_if_not_exists(api_data)
+        
         # Fetch and add APIs from APIs.guru
         apis_guru_apis = fetch_apis_guru()
         logger.info(f"Adding {len(apis_guru_apis)} APIs from APIs.guru to database")
