@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0"><i class="fas fa-plug"></i> Add API Configuration</h2>
+            </div>
+            <div class="card-body">
+                <form id="api-config-form" action="/api_config" method="post" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="api_name" class="form-label">API Name</label>
+                        <input type="text" class="form-control" id="api_name" name="api_name" required>
+                        <div class="invalid-feedback">Please provide an API name.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="api_url" class="form-label">API Base URL</label>
+                        <input type="url" class="form-control" id="api_url" name="api_url" placeholder="https://api.example.com" required>
+                        <div class="invalid-feedback">Please provide a valid API URL.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="api_key_env" class="form-label">API Key Environment Variable</label>
+                        <input type="text" class="form-control" id="api_key_env" name="api_key_env" placeholder="API_KEY_EXAMPLE">
+                        <div class="form-text">Name of the environment variable that contains the API key.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="endpoints" class="form-label">Endpoints (JSON)</label>
+                        <textarea class="form-control" id="endpoints" name="endpoints" rows="6"></textarea>
+                        <div class="form-text">
+                            JSON object defining the API endpoints. Example:
+                            <pre class="mt-2 bg-dark p-2 rounded text-light"><code>{
+  "email_lookup": {
+    "path": "/v1/lookup/email",
+    "method": "GET",
+    "type": "email",
+    "param_name": "email",
+    "auth_type": "header",
+    "auth_header": "X-Api-Key"
+  }
+}</code></pre>
+                        </div>
+                        <div class="invalid-feedback">Please provide valid JSON for endpoints.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="format" class="form-label">Format (JSON)</label>
+                        <textarea class="form-control" id="format" name="format" rows="3"></textarea>
+                        <div class="form-text">JSON object defining the API response format.</div>
+                        <div class="invalid-feedback">Please provide valid JSON for format.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save API Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h2 class="mb-0"><i class="fas fa-list"></i> API Configurations</h2>
+            </div>
+            <div class="card-body">
+                {% if apis and apis|length > 0 %}
+                    <div class="api-table table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>API Name</th>
+                                    <th>Description</th>
+                                    <th>URL</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for api in apis %}
+                                <tr>
+                                    <td id="api-name-{{ api.id }}">{{ api.api_name }}</td>
+                                    <td id="api-description-{{ api.id }}">{{ api.description }}</td>
+                                    <td id="api-url-{{ api.id }}">{{ api.api_url }}</td>
+                                    <td class="api-config-actions">
+                                        <button class="btn btn-sm btn-outline-primary btn-update-api" data-api-id="{{ api.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger btn-delete-api" data-api-id="{{ api.id }}" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- Hidden data fields for editing -->
+                                <span id="api-key-env-{{ api.id }}" class="d-none">{{ api.api_key_env }}</span>
+                                <span id="api-endpoints-{{ api.id }}" class="d-none">{{ api.endpoints }}</span>
+                                <span id="api-format-{{ api.id }}" class="d-none">{{ api.format }}</span>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No API configurations found. Add your first API configuration using the form.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="mb-0"><i class="fas fa-question-circle"></i> How to Configure APIs</h3>
+            </div>
+            <div class="card-body">
+                <p>Configure APIs to extend the OSINT capabilities of this platform:</p>
+                
+                <h5>Common OSINT APIs</h5>
+                <ul>
+                    <li><strong>EmailRep</strong> - Email reputation and intelligence</li>
+                    <li><strong>Hunter.io</strong> - Email finder and verification</li>
+                    <li><strong>Numverify</strong> - Phone number validation and information</li>
+                    <li><strong>Shodan</strong> - Internet-connected device search engine</li>
+                    <li><strong>WhoisXML</strong> - Domain WHOIS data</li>
+                    <li><strong>ZoomEye</strong> - Cyberspace search engine</li>
+                </ul>
+                
+                <h5>API Configuration Format</h5>
+                <p>The endpoint configuration should include:</p>
+                <ul>
+                    <li><strong>path</strong> - API endpoint path</li>
+                    <li><strong>method</strong> - HTTP method (GET, POST)</li>
+                    <li><strong>type</strong> - Type of data (email, phone, social_media, etc.)</li>
+                    <li><strong>param_name</strong> - Parameter name for the query</li>
+                    <li><strong>auth_type</strong> - Authentication type (header, parameter)</li>
+                    <li><strong>auth_header/auth_param</strong> - Name of header or parameter for auth</li>
+                </ul>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-lock"></i> API keys should be stored as environment variables, not in the configuration.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

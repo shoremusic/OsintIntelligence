@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0"><i class="fas fa-search"></i> OSINT Investigation</h2>
+            </div>
+            <div class="card-body">
+                <form id="osint-form" action="/submit_osint" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="Full name of the subject">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" id="phone" name="phone" placeholder="Phone number with country code">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Email address">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="social_media" class="form-label">Social Media Handles</label>
+                        <input type="text" class="form-control" id="social_media" name="social_media" placeholder="Twitter, Instagram, Facebook, LinkedIn, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="location" class="form-label">Last Known Location</label>
+                        <input type="text" class="form-control" id="location" name="location" placeholder="Address, city, or coordinates">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="vehicle" class="form-label">Vehicle Information</label>
+                        <input type="text" class="form-control" id="vehicle" name="vehicle" placeholder="Make, model, license plate, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Image (optional)</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                        <div id="image-preview-container" class="image-preview-container d-none mt-2">
+                            <img id="image-preview" class="image-preview d-none" alt="Preview">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="additional_info" class="form-label">Additional Information</label>
+                        <textarea class="form-control" id="additional_info" name="additional_info" rows="5" placeholder="Any additional information such as known associates, interests, identifiers, etc."></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Start OSINT Investigation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="fas fa-info-circle"></i> About</h3>
+            </div>
+            <div class="card-body">
+                <p>This OSINT (Open Source Intelligence) platform helps you gather information from multiple public sources using advanced AI analysis.</p>
+                <p>Enter the information you have about the subject, and our system will:</p>
+                <ul>
+                    <li>Query relevant APIs based on AI analysis</li>
+                    <li>Analyze and correlate the gathered data</li>
+                    <li>Generate comprehensive intelligence reports</li>
+                    <li>Visualize connections and patterns</li>
+                </ul>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Use this tool responsibly and ethically. Only perform OSINT on subjects with proper authorization or for educational purposes.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="mb-0"><i class="fas fa-globe"></i> Website Scraper</h3>
+            </div>
+            <div class="card-body">
+                <p>Extract content from websites to include in your investigation:</p>
+                <form id="scrape-url-form">
+                    <div class="input-group mb-3">
+                        <input type="url" class="form-control" id="scrape-url" placeholder="https://example.com" required>
+                        <button class="btn btn-outline-secondary" type="submit">Scrape</button>
+                    </div>
+                </form>
+                
+                <div id="scrape-loading" class="text-center my-3 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Scraping website content...</p>
+                </div>
+                
+                <div id="scrape-results" class="d-none">
+                    <h5>Scraped Content:</h5>
+                    <div class="scraper-results">
+                        <textarea id="scraped-content" class="form-control" rows="6" readonly></textarea>
+                    </div>
+                    <div class="d-grid gap-2 mt-2">
+                        <button id="add-to-info" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-plus-circle"></i> Add to Additional Info
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

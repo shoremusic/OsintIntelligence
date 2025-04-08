@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h2 class="mb-0"><i class="fas fa-file-alt"></i> {{ report.title }}</h2>
+                <button class="btn btn-outline-light btn-sm" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Report
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="text-muted mb-4">
+                    <i class="far fa-calendar-alt"></i> {{ report.date }}
+                    <span class="ms-3"><i class="fas fa-tag"></i> Case ID: {{ case_id }}</span>
+                </div>
+                
+                <div id="report-container">
+                    {% for section in report.sections %}
+                    <div class="report-section">
+                        <h3>{{ section.title }}</h3>
+                        
+                        <div class="section-content">
+                            {% if section.content %}
+                                <p>{{ section.content | safe }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        {% if section.visualization_type %}
+                            {% if section.visualization_type == 'map' and section.visualization_data and section.visualization_data.locations %}
+                                <div id="location-map" class="map-container visualization-container" data-locations="{{ section.visualization_data.locations | tojson }}"></div>
+                            {% elif section.visualization_type == 'pie_chart' and section.visualization_data %}
+                                <div id="viz-{{ loop.index }}" class="visualization-container" data-viz-type="pie_chart" data-viz-data="{{ section.visualization_data | tojson }}"></div>
+                            {% elif section.visualization_type == 'bar_chart' and section.visualization_data %}
+                                <div id="viz-{{ loop.index }}" class="visualization-container" data-viz-type="bar_chart" data-viz-data="{{ section.visualization_data | tojson }}"></div>
+                            {% elif section.visualization_type == 'timeline' and section.visualization_data and section.visualization_data.events %}
+                                <div id="viz-{{ loop.index }}" class="visualization-container" data-viz-type="timeline" data-viz-data="{{ section.visualization_data | tojson }}"></div>
+                            {% elif section.visualization_type == 'network_graph' and section.visualization_data %}
+                                <div id="viz-{{ loop.index }}" class="visualization-container" data-viz-type="network_graph" data-viz-data="{{ section.visualization_data | tojson }}"></div>
+                            {% elif section.visualization_type == 'bullet_list' %}
+                                <div id="viz-{{ loop.index }}" class="visualization-container" data-viz-type="bullet_list" data-viz-data="{{ {'items': section.content.split('\n')} | tojson }}"></div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0">
+                    <i class="fas fa-database"></i> Data Sources
+                    <button class="btn btn-sm btn-outline-light float-end" type="button" data-bs-toggle="collapse" data-bs-target="#apiResultsCollapse">
+                        <i class="fas fa-chevron-down"></i> Toggle Details
+                    </button>
+                </h3>
+            </div>
+            <div class="collapse" id="apiResultsCollapse">
+                <div class="card-body">
+                    {% if api_results and api_results|length > 0 %}
+                        <div class="accordion" id="apiResultsAccordion">
+                            {% for result in api_results %}
+                                <div class="accordion-item mb-2">
+                                    <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                                            <strong>{{ result.api_name }}</strong> - {{ result.endpoint }}
+                                            <span class="badge {% if result.status == 'success' %}bg-success{% else %}bg-danger{% endif %} ms-2">{{ result.status }}</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#apiResultsAccordion">
+                                        <div class="accordion-body">
+                                            <h6>Query Parameters:</h6>
+                                            <pre class="code-block">{{ result.query_params | tojson(indent=2) }}</pre>
+                                            
+                                            {% if result.status == 'success' %}
+                                                <h6>Result:</h6>
+                                                <pre class="code-block">{{ result.result | tojson(indent=2) }}</pre>
+                                            {% else %}
+                                                <h6>Error:</h6>
+                                                <div class="alert alert-danger">{{ result.error_message }}</div>
+                                            {% endif %}
+                                            
+                                            <div class="text-muted small mt-2">
+                                                <i class="far fa-clock"></i> {{ result.created_at }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> No API results available.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

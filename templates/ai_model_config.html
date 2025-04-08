@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Model Configuration{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">AI Model Configuration</h1>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Current AI Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Current Provider:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ current_provider }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Current Model:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ current_model }}
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <span>Multimodal capabilities (image analysis) are only available with OpenAI's GPT-4o model.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Change AI Model</h5>
+                    {% if has_openrouter_key %}
+                    <button id="refresh-models" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh Models
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form id="ai-model-form" method="POST" action="{{ url_for('ai_model_config') }}">
+                        <div class="mb-3">
+                            <label for="model-select" class="form-label">Select AI Model</label>
+                            <select class="form-select" id="model-select" name="model_id">
+                                <option value="" disabled selected>Choose a model...</option>
+                                
+                                {% if has_openai_key %}
+                                <optgroup label="OpenAI Models">
+                                    {% for model_id, model_info in available_models.items() if model_info.provider == 'openai' %}
+                                    <option value="{{ model_id }}" {% if model_id == current_provider + ':' + current_model %}selected{% endif %}>
+                                        {{ model_info.name }} - {{ model_info.description }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% else %}
+                                <optgroup label="OpenAI Models (API Key Required)">
+                                    <option value="" disabled>OpenAI API key not configured</option>
+                                </optgroup>
+                                {% endif %}
+                                
+                                {% if has_openrouter_key %}
+                                <optgroup label="OpenRouter Models">
+                                    {% for model_id, model_info in available_models.items() if model_info.provider == 'openrouter' %}
+                                    <option value="{{ model_id }}" {% if model_id == current_provider + ':' + current_model %}selected{% endif %}>
+                                        {{ model_info.name }} - {{ model_info.description }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% else %}
+                                <optgroup label="OpenRouter Models (API Key Required)">
+                                    <option value="" disabled>OpenRouter API key not configured</option>
+                                </optgroup>
+                                {% endif %}
+                            </select>
+                            
+                            {% if not has_openai_key and not has_openrouter_key %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <span>No AI provider API keys configured. Please set up either OpenAI or OpenRouter API keys in your environment.</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary" {% if not has_openai_key and not has_openrouter_key %}disabled{% endif %}>
+                                Update AI Model
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">API Key Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span>API keys are configured through environment variables. To add or update keys, set the following variables in your environment:</span>
+                    </div>
+                    
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Environment Variable</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>OpenAI</td>
+                                <td><code>OPENAI_API_KEY</code></td>
+                                <td>
+                                    {% if has_openai_key %}
+                                    <span class="badge bg-success">Configured</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Not Configured</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>OpenRouter</td>
+                                <td><code>OPENROUTER_API_KEY</code></td>
+                                <td>
+                                    {% if has_openrouter_key %}
+                                    <span class="badge bg-success">Configured</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Not Configured</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Refresh model list button
+        const refreshButton = document.getElementById('refresh-models');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', function() {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Refreshing...';
+                this.disabled = true;
+                
+                fetch('/api/refresh-models', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Error refreshing models: ' + data.error);
+                        this.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Refresh Models';
+                        this.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while refreshing models');
+                    this.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Refresh Models';
+                    this.disabled = false;
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

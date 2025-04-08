@@ -1,0 +1,271 @@
+/**
+ * OSINT Application Custom Styles
+ * Additional styles beyond Bootstrap's defaults
+ */
+
+/* Custom Timeline Styles */
+.timeline {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.timeline::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    background-color: var(--bs-secondary);
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    margin-left: -1px;
+}
+
+.timeline-item {
+    position: relative;
+    width: 100%;
+    margin-bottom: 30px;
+}
+
+.timeline-item::after {
+    content: '';
+    display: table;
+    clear: both;
+}
+
+.timeline-badge {
+    position: absolute;
+    top: 15px;
+    width: 25px;
+    height: 25px;
+    background-color: var(--bs-primary);
+    border-radius: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.timeline-badge.left {
+    left: 50%;
+    margin-left: -12px;
+}
+
+.timeline-badge.right {
+    left: 50%;
+    margin-left: -12px;
+}
+
+.timeline-panel {
+    position: relative;
+    width: 46%;
+    padding: 15px;
+    border-radius: 6px;
+    background-color: var(--bs-dark);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.timeline-panel.left {
+    float: left;
+    margin-right: 4%;
+}
+
+.timeline-panel.right {
+    float: right;
+    margin-left: 4%;
+}
+
+.timeline-panel.left::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    right: -10px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 10px solid var(--bs-dark);
+}
+
+.timeline-panel.right::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: -10px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 10px solid var(--bs-dark);
+}
+
+/* Map Styles */
+.map-container {
+    height: 400px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+/* API Configuration Table */
+.api-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.api-config-actions {
+    white-space: nowrap;
+}
+
+/* Report Sections */
+.report-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border-radius: 6px;
+    background-color: var(--bs-dark);
+    border: 1px solid var(--bs-border-color);
+}
+
+.report-section h3 {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.visualization-container {
+    margin-top: 20px;
+    min-height: 100px;
+}
+
+/* Form Styles */
+.custom-file-label::after {
+    content: "Browse";
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+}
+
+/* Bullet List */
+.bullet-list {
+    padding-left: 20px;
+}
+
+.bullet-list li {
+    margin-bottom: 10px;
+}
+
+/* Network Graph Styles */
+.node circle {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.node text {
+    pointer-events: none;
+    font-family: sans-serif;
+}
+
+.link {
+    stroke-opacity: 0.6;
+}
+
+/* Loading Indicators */
+.loading-spinner {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border: 0.25rem solid var(--bs-secondary);
+    border-radius: 50%;
+    border-top-color: var(--bs-primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* API Result Accordion */
+.api-result-accordion {
+    margin-bottom: 1rem;
+}
+
+.api-result-header {
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    background-color: var(--bs-gray-800);
+    border-radius: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.api-result-body {
+    padding: 1rem;
+    background-color: var(--bs-gray-900);
+    border: 1px solid var(--bs-gray-800);
+    border-top: none;
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
+
+/* Pre-formatted code blocks */
+pre.code-block {
+    background-color: var(--bs-gray-900);
+    border: 1px solid var(--bs-gray-800);
+    border-radius: 0.25rem;
+    padding: 1rem;
+    overflow: auto;
+    max-height: 500px;
+}
+
+/* Image preview container */
+.image-preview-container {
+    max-width: 300px;
+    margin-top: 10px;
+}
+
+.image-preview {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+/* URL Scraper Results */
+.scraper-results {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Media queries for responsive layout */
+@media (max-width: 768px) {
+    .timeline::after {
+        left: 31px;
+    }
+    
+    .timeline-panel {
+        width: calc(100% - 80px);
+    }
+    
+    .timeline-panel.left,
+    .timeline-panel.right {
+        float: right;
+        margin-left: 80px;
+    }
+    
+    .timeline-badge.left,
+    .timeline-badge.right {
+        left: 31px;
+        margin-left: 0;
+    }
+    
+    .timeline-panel.left::after,
+    .timeline-panel.right::after {
+        left: -10px;
+        right: auto;
+        border-left: 0;
+        border-right: 10px solid var(--bs-dark);
+    }
+}
