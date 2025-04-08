@@ -37,12 +37,13 @@ with app.app_context():
     # Import the models here
     from models import (
         APIConfiguration, OSINTCase, DataPoint, APIResult,
-        WorkflowDefinition, WorkflowExecution, WorkflowStep
+        WorkflowDefinition, WorkflowExecution, WorkflowStep,
+        InitialUserInput
     )
     db.create_all()
 
 # Import services after app and db initialization
-from openai_service import process_input_with_llm, analyze_data_with_llm, generate_report_with_llm, ai_provider
+from openai_service import process_input_with_llm, analyze_data_with_llm, generate_report_with_llm, generate_case_title, ai_provider
 from api_service import query_apis, query_rapidapi, get_all_apis, add_api_config, get_api_config, update_api_config, delete_api_config
 from web_scraper import get_website_text_content
 import workflow_engine
@@ -121,42 +122,13 @@ def submit_osint():
         
         # Handle image if provided
         image_data = None
+        has_image = False
         if 'image' in request.files and request.files['image'].filename:
             image_file = request.files['image']
             image_data = base64.b64encode(image_file.read()).decode('utf-8')
+            has_image = True
         
-        # Create a new OSINT case
-        with app.app_context():
-            case = OSINTCase(
-                name=name or "Unnamed Case",  # Default name if none provided
-                created_at=datetime.now()
-            )
-            db.session.add(case)
-            db.session.flush()  # Get the case ID without committing
-            
-            # Add initial data points
-            data_points = []
-            if name:
-                data_points.append(DataPoint(case_id=case.id, data_type='name', value=name))
-            if phone:
-                data_points.append(DataPoint(case_id=case.id, data_type='phone', value=phone))
-            if email:
-                data_points.append(DataPoint(case_id=case.id, data_type='email', value=email))
-            if social_media:
-                data_points.append(DataPoint(case_id=case.id, data_type='social_media', value=social_media))
-            if location:
-                data_points.append(DataPoint(case_id=case.id, data_type='location', value=location))
-            if vehicle:
-                data_points.append(DataPoint(case_id=case.id, data_type='vehicle', value=vehicle))
-            if additional_info:
-                data_points.append(DataPoint(case_id=case.id, data_type='additional_info', value=additional_info))
-            if image_data:
-                data_points.append(DataPoint(case_id=case.id, data_type='image', value=image_data))
-            
-            db.session.add_all(data_points)
-            db.session.commit()
-        
-        # Process input with LLM to determine which APIs to query
+        # Prepare input data for processing
         input_data = {
             'name': name,
             'phone': phone,
@@ -165,8 +137,60 @@ def submit_osint():
             'location': location,
             'vehicle': vehicle,
             'additional_info': additional_info,
-            'has_image': image_data is not None
+            'has_image': has_image
         }
+        
+        # Generate a title for the case using a low-cost model
+        case_title = generate_case_title(input_data)
+        
+        # Create a new OSINT case
+        case = OSINTCase(
+            name=name or "Unnamed Case",  # Default name if none provided
+            title=case_title,
+            created_at=datetime.now()
+        )
+        db.session.add(case)
+        db.session.flush()  # Get the case ID without committing
+        
+        # Create user input record
+        user_input = InitialUserInput(
+            case_id=case.id,
+            name=name,
+            phone=phone,
+            email=email,
+            social_media=social_media,
+            location=location,
+            vehicle=vehicle,
+            additional_info=additional_info,
+            has_image=has_image,
+            created_at=datetime.now()
+        )
+        db.session.add(user_input)
+        
+        # Add initial data points
+        data_points = []
+        if name:
+            data_points.append(DataPoint(case_id=case.id, data_type='name', value=name))
+        if phone:
+            data_points.append(DataPoint(case_id=case.id, data_type='phone', value=phone))
+        if email:
+            data_points.append(DataPoint(case_id=case.id, data_type='email', value=email))
+        if social_media:
+            data_points.append(DataPoint(case_id=case.id, data_type='social_media', value=social_media))
+        if location:
+            data_points.append(DataPoint(case_id=case.id, data_type='location', value=location))
+        if vehicle:
+            data_points.append(DataPoint(case_id=case.id, data_type='vehicle', value=vehicle))
+        if additional_info:
+            data_points.append(DataPoint(case_id=case.id, data_type='additional_info', value=additional_info))
+        if image_data:
+            data_points.append(DataPoint(case_id=case.id, data_type='image', value=image_data))
+        
+        db.session.add_all(data_points)
+        db.session.commit()
+        
+        # Update input_data to ensure has_image reflects image_data existence
+        input_data['has_image'] = image_data is not None
         
         # Get LLM analysis of the input data
         llm_analysis = process_input_with_llm(input_data)
@@ -213,10 +237,15 @@ def report():
         flash("No report data available. Please submit a new OSINT request.", "warning")
         return redirect(url_for('index'))
     
+    # Get the case information to display the title
+    case = OSINTCase.query.get(case_id)
+    case_title = case.title if case and case.title else "OSINT Investigation Report"
+    
     return render_template('report.html', 
                            report=report_data, 
                            api_results=api_results,
-                           case_id=case_id)
+                           case_id=case_id,
+                           case_title=case_title)
 
 @app.route('/help')
 def help_page():

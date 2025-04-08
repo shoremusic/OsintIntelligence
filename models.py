@@ -119,10 +119,46 @@ class APIConfiguration(db.Model):
             'updated_at': self.updated_at.isoformat()
         }
 
+class InitialUserInput(db.Model):
+    """Model for storing initial user input for OSINT investigations"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('osint_case.id'), nullable=False)
+    name = db.Column(db.String(256), nullable=True)
+    phone = db.Column(db.String(64), nullable=True)
+    email = db.Column(db.String(128), nullable=True)
+    social_media = db.Column(db.String(256), nullable=True)
+    location = db.Column(db.String(256), nullable=True)
+    vehicle = db.Column(db.String(256), nullable=True)
+    additional_info = db.Column(db.Text, nullable=True)
+    has_image = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # Relationships
+    case = db.relationship('OSINTCase', backref='user_input', uselist=False)
+    
+    def __repr__(self):
+        return f'<InitialUserInput {self.id} for case {self.case_id}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'name': self.name,
+            'phone': self.phone,
+            'email': self.email,
+            'social_media': self.social_media,
+            'location': self.location,
+            'vehicle': self.vehicle,
+            'additional_info': self.additional_info,
+            'has_image': self.has_image,
+            'created_at': self.created_at.isoformat()
+        }
+
 class OSINTCase(db.Model):
     """Model for storing OSINT cases"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(256), nullable=True)  # Name of the person or case
+    title = db.Column(db.String(256), nullable=True)  # AI-generated title for the case
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
@@ -137,6 +173,7 @@ class OSINTCase(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'title': self.title,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'data_points': [dp.to_dict() for dp in self.data_points],

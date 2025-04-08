@@ -462,6 +462,64 @@ def analyze_data_with_llm(api_results, input_data):
             "summary": "Analysis failed due to an error. Please review the raw data."
         }
 
+def generate_case_title(input_data):
+    """
+    Generate a title for an OSINT case using a low-cost model
+    
+    Args:
+        input_data (dict): Dictionary containing user input data
+        
+    Returns:
+        str: Generated title for the case
+    """
+    # Use a low token cost model for title generation
+    # Prefer models like Gemini 2.0 Turbo, Llama 3.2, Gemma 3, OpenAI o3-Mini
+    
+    # Build a summary of the input data
+    input_summary = ""
+    if input_data.get('name'):
+        input_summary += f"Name: {input_data['name']}. "
+    if input_data.get('phone'):
+        input_summary += f"Phone: {input_data['phone']}. "
+    if input_data.get('email'):
+        input_summary += f"Email: {input_data['email']}. "
+    if input_data.get('social_media'):
+        input_summary += f"Social Media: {input_data['social_media']}. "
+    if input_data.get('location'):
+        input_summary += f"Location: {input_data['location']}. "
+    if input_data.get('vehicle'):
+        input_summary += f"Vehicle: {input_data['vehicle']}. "
+    if input_data.get('additional_info'):
+        input_summary += f"Additional Info: {input_data['additional_info']}. "
+    if input_data.get('has_image'):
+        input_summary += "Image provided. "
+    
+    # Save current model and set to a low-cost model temporarily
+    current_model = ai_provider.model
+    try:
+        # Try to use a low-cost model for title generation
+        # Possible low-cost models: "openai/gpt-3.5-turbo", "anthropic/claude-3-haiku-20240307", "google/gemini-1.5-pro-latest"
+        ai_provider.set_model("openai/gpt-3.5-turbo")
+        
+        # Generate the title
+        prompt = f"Create a concise, informative title (max 60 characters) for an OSINT investigation with this data: {input_summary} The title should be professional and descriptive without being sensationalist."
+        messages = [{"role": "user", "content": prompt}]
+        response = ai_provider.chat_completion(messages, max_tokens=100)
+        title = response["choices"][0]["message"]["content"].strip().strip('"')
+        
+        # Ensure title is not too long
+        if len(title) > 80:
+            title = title[:77] + "..."
+            
+        return title
+    except Exception as e:
+        logger.error(f"Error generating case title: {str(e)}")
+        # Fallback to a simple title based on name or default
+        return f"Investigation: {input_data.get('name', 'Unnamed Case')}"
+    finally:
+        # Restore original model
+        ai_provider.set_model(current_model)
+
 def generate_report_with_llm(data_analysis, api_results, input_data):
     """
     Generate a comprehensive report from the analyzed data
