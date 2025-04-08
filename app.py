@@ -292,6 +292,45 @@ def save_api_key():
         logger.error(f"Error saving API key: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/populate_api_directory', methods=['POST'])
+def populate_api_directory():
+    """Route to populate the API directory from public sources"""
+    try:
+        # Import the script functions
+        from populate_api_directory import fetch_apis_guru, fetch_public_apis, add_api_config_if_not_exists
+        
+        # Determine which source to use
+        source = request.form.get('source', 'all')
+        apis_count = 0
+        
+        if source in ['all', 'apis_guru']:
+            # Fetch and add APIs from APIs.guru
+            apis_guru_apis = fetch_apis_guru()
+            apis_guru_count = 0
+            for api_data in apis_guru_apis:
+                if add_api_config_if_not_exists(api_data):
+                    apis_guru_count += 1
+            logger.info(f"Added {apis_guru_count} APIs from APIs.guru to database")
+            apis_count += apis_guru_count
+        
+        if source in ['all', 'public_apis']:
+            # Fetch and add APIs from Public APIs
+            public_apis = fetch_public_apis()
+            public_apis_count = 0
+            for api_data in public_apis:
+                if add_api_config_if_not_exists(api_data):
+                    public_apis_count += 1
+            logger.info(f"Added {public_apis_count} APIs from Public APIs to database")
+            apis_count += public_apis_count
+        
+        flash(f"Successfully added {apis_count} new APIs to the directory", "success")
+        return redirect(url_for('api_config'))
+    
+    except Exception as e:
+        logger.error(f"Error populating API directory: {str(e)}")
+        flash(f"Error populating API directory: {str(e)}", "danger")
+        return redirect(url_for('api_config'))
+
 @app.errorhandler(500)
 def server_error(e):
     return render_template('base.html', error="Server error occurred. Please try again."), 500

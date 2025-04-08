@@ -117,6 +117,53 @@
         </div>
         
         <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0"><i class="fas fa-cloud-download-alt"></i> Pre-Curated API Directory</h3>
+            </div>
+            <div class="card-body">
+                <p>Populate your API directory automatically from public API repositories. This will add OSINT-relevant APIs from public directories to your system.</p>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> This will scan APIs from <a href="https://github.com/APIs-guru/openapi-directory" target="_blank">APIs.guru</a> and <a href="https://github.com/public-apis/public-apis" target="_blank">Public APIs GitHub Repo</a> and add them to your database.
+                </div>
+                
+                <form action="/populate_api_directory" method="post" class="mb-3">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Select API Directory Source</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="source" id="source_all" value="all" checked>
+                            <label class="form-check-label" for="source_all">
+                                All Sources
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="source" id="source_apis_guru" value="apis_guru">
+                            <label class="form-check-label" for="source_apis_guru">
+                                APIs.guru Only
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="source" id="source_public_apis" value="public_apis">
+                            <label class="form-check-label" for="source_public_apis">
+                                Public APIs GitHub Repo Only
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-download"></i> Populate API Directory
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> This process may take a few minutes to complete. The page will refresh once it's done.
+                </div>
+            </div>
+        </div>
+                
+        <div class="card mb-4">
             <div class="card-header bg-danger text-white">
                 <h3 class="mb-0"><i class="fas fa-rocket"></i> RapidAPI Configuration</h3>
             </div>
