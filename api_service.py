@@ -11,9 +11,15 @@ from openai_service import analyze_image
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# RapidAPI credentials
+# RapidAPI credentials - securely loaded from environment variables
+# as recommended in the RapidAPI documentation
 RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY")
+# Base domain for all RapidAPI services
 RAPIDAPI_HOST = "rapidapi.com"
+
+# RapidAPI rate limiting constants
+RAPIDAPI_RATE_LIMIT_HEADER = "X-RateLimit-Limit"
+RAPIDAPI_RATE_REMAINING_HEADER = "X-RateLimit-Remaining"
 
 def query_apis(case_id, llm_analysis, available_apis):
     """
@@ -346,6 +352,67 @@ def delete_api_config(api_id):
         db.session.rollback()
         raise Exception(f"Error deleting API configuration: {str(e)}")
 
+def add_rapidapi_config(api_config, case_id):
+    """
+    Add a RapidAPI configuration on the fly
+    
+    Args:
+        api_config (dict): Dictionary containing RapidAPI configuration
+        case_id (int): ID of the OSINT case
+        
+    Returns:
+        APIConfiguration: Newly created API configuration object
+    """
+    try:
+        # Create a standardized endpoint configuration
+        endpoints = {
+            api_config['endpoint']: {
+                'path': api_config['endpoint'],
+                'method': api_config['method'],
+                'auth_type': 'header',
+                'auth_header': 'x-rapidapi-key',
+                'param_name': api_config['param_name'],
+                'type': api_config.get('type', 'unknown')
+            }
+        }
+        
+        # Create API configuration
+        api_name = f"RapidAPI - {api_config['name']}"
+        api_url = f"https://{api_config['host']}"
+        
+        api_config_obj = APIConfiguration(
+            api_name=api_name,
+            api_url=api_url,
+            api_key_env="RAPIDAPI_KEY",
+            description=f"RapidAPI integration for {api_config['name']} (automatically added)",
+            endpoints=json.dumps(endpoints),
+            format=json.dumps({"format": "json"}),
+            created_at=datetime.now()
+        )
+        
+        db.session.add(api_config_obj)
+        db.session.commit()
+        
+        logger.info(f"Created new RapidAPI configuration: {api_name}")
+        return api_config_obj
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding RapidAPI configuration: {str(e)}")
+        # Create a placeholder API config that won't interfere with other operations
+        placeholder = APIConfiguration(
+            api_name=f"RapidAPI - {api_config.get('name', 'Unknown')}-{case_id}",
+            api_url="https://rapidapi.com",
+            api_key_env="RAPIDAPI_KEY",
+            description="Error creating configuration - placeholder",
+            endpoints="{}",
+            format="{}",
+            created_at=datetime.now()
+        )
+        db.session.add(placeholder)
+        db.session.commit()
+        return placeholder
+
 def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
     """
     Query RapidAPI based on LLM analysis
@@ -504,26 +571,69 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                 # Make request
                                 logger.debug(f"Querying RapidAPI: {api_config['name']}, URL: {url}, Params: {params}")
                                 
-                                if api_config['method'] == 'GET':
-                                    response = requests.get(url, headers=headers, params=params, timeout=15)
-                                elif api_config['method'] == 'POST':
-                                    if api_config.get('content_type') == 'multipart/form-data':
-                                        # Handle file uploads
-                                        files = None
-                                        if data_type == 'image' and image_data:
-                                            import base64
-                                            import io
-                                            image_content = base64.b64decode(image_data)
-                                            files = {
-                                                'image': ('image.jpg', io.BytesIO(image_content), 'image/jpeg')
-                                            }
-                                            response = requests.post(url, headers=headers, data=params, files=files, timeout=30)
+                                try:
+                                    if api_config['method'] == 'GET':
+                                        logger.debug(f"Making GET request to {url}")
+                                        response = requests.get(url, headers=headers, params=params, timeout=15)
+                                    elif api_config['method'] == 'POST':
+                                        if api_config.get('content_type') == 'multipart/form-data':
+                                            # Handle file uploads
+                                            files = None
+                                            if data_type == 'image' and image_data:
+                                                import base64
+                                                import io
+                                                image_content = base64.b64decode(image_data)
+                                                files = {
+                                                    'image': ('image.jpg', io.BytesIO(image_content), 'image/jpeg')
+                                                }
+                                                logger.debug(f"Making POST request with file upload to {url}")
+                                                response = requests.post(url, headers=headers, data=params, files=files, timeout=30)
+                                            else:
+                                                logger.debug(f"Making POST request with form data to {url}")
+                                                response = requests.post(url, headers=headers, data=params, timeout=15)
                                         else:
-                                            response = requests.post(url, headers=headers, data=params, timeout=15)
+                                            logger.debug(f"Making POST request with JSON data to {url}")
+                                            response = requests.post(url, headers=headers, json=params, timeout=15)
                                     else:
-                                        response = requests.post(url, headers=headers, json=params, timeout=15)
-                                else:
-                                    logger.error(f"Unsupported HTTP method: {api_config['method']}")
+                                        logger.error(f"Unsupported HTTP method: {api_config['method']}")
+                                        continue
+                                        
+                                    # Log rate limiting information if provided by RapidAPI
+                                    if RAPIDAPI_RATE_LIMIT_HEADER in response.headers:
+                                        rate_limit = response.headers.get(RAPIDAPI_RATE_LIMIT_HEADER)
+                                        rate_remaining = response.headers.get(RAPIDAPI_RATE_REMAINING_HEADER, 'unknown')
+                                        logger.debug(f"RapidAPI rate limit: {rate_limit}, remaining: {rate_remaining}")
+                                        
+                                except requests.exceptions.RequestException as e:
+                                    # Handle request exceptions properly as recommended in RapidAPI best practices
+                                    logger.error(f"Request error to {url}: {str(e)}")
+                                    error_msg = f"Request error: {str(e)}"
+                                    
+                                    # Create API entry for the error
+                                    api_name = f"RapidAPI - {api_config['name']}"
+                                    api_config_obj = APIConfiguration.query.filter_by(api_name=api_name).first()
+                                    
+                                    if not api_config_obj:
+                                        # Create API config on the fly for this RapidAPI
+                                        api_config_obj = add_rapidapi_config(api_config, case_id)
+                                    
+                                    # Create API result record for error
+                                    api_result = APIResult(
+                                        case_id=case_id,
+                                        api_config_id=api_config_obj.id,
+                                        endpoint=api_config['endpoint'],
+                                        query_params=json.dumps(params),
+                                        status='error',
+                                        error_message=error_msg,
+                                        created_at=datetime.now()
+                                    )
+                                    db.session.add(api_result)
+                                    db.session.commit()
+                                    
+                                    # Add to results list and skip to next API
+                                    result_dict = api_result.to_dict()
+                                    result_dict['api_name'] = api_name
+                                    results.append(result_dict)
                                     continue
                                 
                                 # Create API configuration entry if it doesn't exist
@@ -555,12 +665,14 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     db.session.add(api_config_obj)
                                     db.session.commit()
                                 
-                                # Process the response
-                                if response.status_code == 200:
+                                # Process the response based on status code - implementing best practices from RapidAPI docs
+                                if 200 <= response.status_code < 300:  # Success codes (200-299)
                                     try:
                                         result_data = response.json()
                                     except json.JSONDecodeError:
                                         result_data = {"raw_text": response.text}
+                                    
+                                    logger.debug(f"RapidAPI success response from {api_config['name']}")
                                     
                                     # Create API result record
                                     api_result = APIResult(
@@ -580,8 +692,32 @@ def query_rapidapi(case_id, llm_analysis, available_apis, input_data):
                                     result_dict['api_name'] = api_name
                                     results.append(result_dict)
                                     
+                                elif response.status_code == 401 or response.status_code == 403:
+                                    # Authentication errors - need new API key
+                                    error_msg = f"RapidAPI authentication error: {response.status_code} - API key may be invalid or expired"
+                                    logger.error(error_msg)
+                                    
+                                elif response.status_code == 429:
+                                    # Rate limit exceeded
+                                    error_msg = f"RapidAPI rate limit exceeded for {api_config['name']}"
+                                    logger.error(error_msg)
+                                    
+                                    # Wait longer before next request
+                                    time.sleep(3)
+                                    
+                                elif 400 <= response.status_code < 500:
+                                    # Other client errors
+                                    error_msg = f"RapidAPI client error: {response.status_code} - {response.text}"
+                                    logger.error(error_msg)
+                                    
+                                elif 500 <= response.status_code < 600:
+                                    # Server errors
+                                    error_msg = f"RapidAPI server error: {response.status_code} - {response.text}"
+                                    logger.error(error_msg)
+                                    
                                 else:
-                                    error_msg = f"RapidAPI error: {response.status_code} - {response.text}"
+                                    # Other errors
+                                    error_msg = f"RapidAPI unexpected error: {response.status_code} - {response.text}"
                                     logger.error(error_msg)
                                     
                                     # Create API result record for error
